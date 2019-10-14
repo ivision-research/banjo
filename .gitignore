@@ -1,0 +1,4 @@
+*.pyc
+*.sw[a-p]
+.*.sw[a-p]
+.mypy_cache/
