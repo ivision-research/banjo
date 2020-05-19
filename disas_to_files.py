@@ -3,9 +3,8 @@ import argparse
 from pathlib import Path
 from typing import TextIO
 
-from android.dex import DexClassDef, DexEncodedMethod, DexFile
+from android.dex import DexClassDef, DexEncodedMethod, DexFile, FileOffset
 from android.smali import disassemble, endian_swap_shorts
-
 
 THROW = False
 
@@ -18,17 +17,20 @@ def write_method(df: DexFile, f: TextIO, meth: DexEncodedMethod) -> None:
     while meth.code and i < len(meth.code.insns):
         try:
             insns, size = disassemble(
-                df, endian_swap_shorts(meth.code.insns[i:]), meth.code._insns_off + i,
+                df,
+                endian_swap_shorts(meth.code.insns[i:]),
+                FileOffset(meth.code._insns_off + i),
             )
             f.write(f'\n    {"".join([insn.text for insn in insns])}\n')
             i += size
         except Exception as e:
             print(
-                f"Failed to disassemble {endian_swap_shorts(meth.code.insns[i:])} at {hex(meth.code._insns_off + i)}: {e}"
+                f"Failed to disassemble {endian_swap_shorts(meth.code.insns[i:])!r} at {hex(meth.code._insns_off + i)}: {e}"
             )
-            # raise e
+            if THROW:
+                raise e
             f.write(
-                f"\n    Failed to disassemble: {endian_swap_shorts(meth.code.insns[i:])}: {e}\n"
+                f"\n    Failed to disassemble: {endian_swap_shorts(meth.code.insns[i:])!r}: {e}\n"
             )
             i += 2
     f.write(".end method\n")
@@ -74,18 +76,17 @@ if __name__ == "__main__":
         dest="out_dir",
         default=Path("out/"),
         type=Path,
-        help="Directory to write output to (default: out/)",
+        help="directory to write output to (default: out/)",
     )
     parser.add_argument(
         "-t",
         dest="throw",
-        default=False,
-        type=bool,
-        help="Throw exception on disassembly error (default: False/)",
+        action="store_false",
+        help="throw exception on first disassembly error",
     )
 
     args = parser.parse_args()
     if not args.dex_filename.exists():
-        argparse.ArgumentParser.exit(1, f"{args.dex_filename} does not exist.")
+        parser.error(f"the file '{args.dex_filename}' does not exist.")
     THROW = args.throw
     dis_file(args.dex_filename, args.out_dir)
