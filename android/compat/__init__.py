@@ -1,5 +1,5 @@
 import enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List
 
 try:
@@ -58,7 +58,7 @@ except ModuleNotFoundError:
         context = None
         address: int = 0
         confidence: int = 255
-        typeNames: List[Any] = []
+        typeNames: List[Any] = field(default_factory=list)
         width: int = 0
 
 
