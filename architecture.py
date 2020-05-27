@@ -1,6 +1,7 @@
-import time
+"""Architecture class for Binary Ninja plugin."""
 import pickle
-from typing import Any, List, Tuple
+import time
+from typing import List, Tuple, cast
 
 from binaryninja.architecture import Architecture  # type: ignore
 from binaryninja.enums import BranchType  # type: ignore
@@ -9,10 +10,18 @@ from binaryninja.function import (  # type: ignore
     InstructionTextToken,
     RegisterInfo,
 )
-from binaryninja.lowlevelil import LowLevelILFunction, LowLevelILOperation, LLIL_TEMP  # type: ignore
+from binaryninja.lowlevelil import (  # type: ignore
+    LLIL_TEMP,
+    LowLevelILFunction,
+    LowLevelILOperation,
+)
 
 from .android.compat import log_debug, log_error, log_warn
+from .android.dex import DexFile, FileOffset
 from .android.smali import (
+    SmaliFillArrayDataPayload,
+    SmaliPackedSwitchPayload,
+    SmaliSparseSwitchPayload,
     disassemble,
     endian_swap_shorts,
     load_insns,
@@ -21,7 +30,21 @@ from .android.smali import (
 )
 
 
-class Smali(Architecture):
+class Smali(Architecture):  # type: ignore
+    """Architecture class for disassembling Dalvik bytecode into Smali
+
+    Initializing the class calls android.smali.load_insns(), which imports
+    cached instruction information from "android/instruction_data.pickle".
+
+    The three mandatory Architecture functions are implemented:
+        - get_instruction_info
+        - get_instruction_text
+        - get_instruction_low_level_il
+
+    There is also load_dex(), which is called the first time any of the three
+    functions are called. It loads the parsed DexFile class from disk.
+    """
+
     name = "Smali"
 
     # FIXME there should be 65536 registers, but binja hangs when the number gets above a thousand or so
@@ -37,10 +60,11 @@ class Smali(Architecture):
 
     def __init__(self) -> None:
         self.insns = load_insns()
-        self.df: Any = None
+        self.inialized_df: bool = False
         super().__init__()
 
     def load_dex(self) -> None:
+        """Load DexFile from disk. Should only be called once."""
         # FIXME all tabs in a window share the same Architecture class,
         # apparently. This means that, as far as I know, there's no way to
         # store this information per-tab. This could be hacked around if there
@@ -60,14 +84,15 @@ class Smali(Architecture):
             try:
                 # FIXME don't hardcode filename. See previous comment
                 with open("/tmp/out.json.pickle", "br") as f:
-                    self.df = pickle.load(f)
+                    self.df: DexFile = pickle.load(f)
+                    self.inialized_df = True
                     break
             except FileNotFoundError:
                 log_debug("Dex file decoding not finished. Sleeping")
                 time.sleep(1)
 
-    def get_instruction_info(self, data: bytes, addr: int) -> InstructionInfo:
-        if self.df is None:
+    def get_instruction_info(self, data: bytes, addr: FileOffset) -> InstructionInfo:
+        if not self.inialized_df:
             self.load_dex()
         ii = InstructionInfo()
 
@@ -125,7 +150,7 @@ class Smali(Architecture):
             )
         elif insn_info.mnemonic.startswith("invoke-"):
             if insn_info.mnemonic.startswith("invoke-custom"):
-                log_warn(f"Resolution of invoke-custom is not implemented")
+                log_warn("Resolution of invoke-custom is not implemented")
                 ii.add_branch(BranchType.UnresolvedBranch)
             else:
                 data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
@@ -136,25 +161,28 @@ class Smali(Architecture):
         return ii
 
     def get_instruction_text(
-        self, data: bytes, addr: int
+        self, data: bytes, addr: FileOffset
     ) -> Tuple[List[InstructionTextToken], int]:
-        if self.df is None:
+        if not self.inialized_df:
             self.load_dex()
         return disassemble(self.df, data, addr)
 
     def get_instruction_low_level_il(
-        self, data: bytes, addr: int, il: LowLevelILFunction
+        self, data: bytes, addr: FileOffset, il: LowLevelILFunction
     ) -> int:
-        if self.df is None:
+        if not self.inialized_df:
             self.load_dex()
         insn_info = self.insns[data[0]]
         if data[0] == 0x2B or data[0] == 0x2C and False:
             data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
             args = parse_with_format(data_to_parse, insn_info.fmt.format_)
             offset = sign(args["B"], insn_info.fmt.format_.count("B"))
-            payload = self.df.pseudoinstructions[addr + offset * 2]
             branches = list()  # [addr + offset * 2, addr + insn_info.fmt.insn_len * 2]
             if data[0] == 0x2B:  # packed-switch
+                payload = cast(
+                    SmaliPackedSwitchPayload,
+                    self.df.pseudoinstructions[cast(FileOffset, addr + offset * 2)],
+                )
                 for i in range(len(payload.targets)):
                     key = payload.first_key + i
                     target_addr = addr + payload.targets[i] * 2

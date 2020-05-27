@@ -7,14 +7,15 @@ from struct import pack, unpack
 from typing import Any, Dict, List, NewType, Optional, Tuple, Union, cast
 
 from .smali import (
-    disassemble_pseudoinstructions,
-    SmaliPackedSwitchPayload,
+    PseudoInstructions,
     SmaliFillArrayDataPayload,
+    SmaliPackedSwitchPayload,
     SmaliSparseSwitchPayload,
+    disassemble_pseudoinstructions,
 )
 
 try:
-    from compat import Endianness, log_debug, log_error, log_warn
+    from compat import Endianness, log_debug, log_error, log_warn  # type: ignore
 except ModuleNotFoundError:
     from .compat import Endianness, log_debug, log_error, log_warn
 
@@ -643,7 +644,7 @@ class DexFile(object):
         elif endian_bytes == b"\x78\x56\x34\x12":
             self.endianness = Endianness.LittleEndian
         else:
-            raise ValueError(f'Invalid endianness found: {endian_bytes!r}')
+            raise ValueError(f"Invalid endianness found: {endian_bytes!r}")
         if self.endianness == Endianness.BigEndian:
             # It is likely that these do not exist at all, but who knows
             log_warn(
@@ -1027,14 +1028,7 @@ class DexFile(object):
         self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.code_items: Dict[FileOffset, DexCodeItem] = dict()
-        self.pseudoinstructions: Dict[
-            FileOffset,
-            Union[
-                SmaliPackedSwitchPayload,
-                SmaliFillArrayDataPayload,
-                SmaliSparseSwitchPayload,
-            ],
-        ] = dict()
+        self.pseudoinstructions: PseudoInstructions = cast(PseudoInstructions, dict())
         i = 0
         for num in range(size):
             code_item_off: FileOffset = cast(FileOffset, offset_to_section + i)
@@ -1128,7 +1122,9 @@ class DexFile(object):
 
             # Disassemble code to parse out pseudoinstruction data blocks
             self.pseudoinstructions.update(
-                disassemble_pseudoinstructions(code_item.insns, code_item_off + 16)
+                disassemble_pseudoinstructions(
+                    code_item.insns, cast(FileOffset, code_item_off + 16)
+                )
             )
 
             # code_items are 4-byte aligned
@@ -1150,9 +1146,9 @@ class DexFile(object):
             value_arg: int,
             struct_type: str,
             data: bytes,
-            lookup: List[Any] = None,
+            lookup: Optional[List[Any]] = None,
         ) -> Tuple[DexValue, int]:
-            if lookup:
+            if lookup is not None:
                 return (
                     DexValue(
                         type_=value_type,

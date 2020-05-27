@@ -1,3 +1,6 @@
+"""BinaryView class for Binary Ninja plugin."""
+import base64
+import dataclasses
 import json
 import pickle
 from typing import Any, Set
@@ -14,11 +17,21 @@ from binaryninja.platform import Platform  # type: ignore
 from binaryninja.plugin import BackgroundTaskThread  # type: ignore
 from binaryninja.types import Symbol  # type: ignore
 
-from .android.dex import DexFile
-from .jsonencoder import DataclassJSONEncoder
+from .android.dex import AccessFlag, DexFile
 
 
-class JsonWriter(BackgroundTaskThread):
+class DataclassJSONEncoder(json.JSONEncoder):
+    def default(self, o: object) -> Any:
+        if isinstance(o, bytes):
+            return base64.b64encode(o).decode()
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        if isinstance(o, AccessFlag):
+            return o.value
+        return super().default(o)
+
+
+class JsonWriter(BackgroundTaskThread):  # type: ignore
     def __init__(self, obj: Any, fn: str) -> None:
         BackgroundTaskThread.__init__(self, "Writing Dex structure as JSON")
         self.obj = obj
@@ -31,7 +44,7 @@ class JsonWriter(BackgroundTaskThread):
             json.dump(self.obj.__dict__, f, cls=DataclassJSONEncoder)
 
 
-class DexParser(BackgroundTaskThread):
+class DexParser(BackgroundTaskThread):  # type: ignore
 
     progress_title = "Parsing Dex"
 
@@ -121,7 +134,7 @@ class DexParser(BackgroundTaskThread):
         # TODO create data sections for static fields
 
 
-class Dex(BinaryView):
+class Dex(BinaryView):  # type: ignore
     name = "Dex"
 
     DEX_FILE_MAGICS = [b"dex\n039\0", b"dex\n038\0", b"dex\n037\0", b"dex\n035\0"]

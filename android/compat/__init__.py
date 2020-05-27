@@ -21,12 +21,14 @@ except ModuleNotFoundError:
     def log_warn(s: str) -> None:
         print(s)
 
-    class Endianness(enum.Enum):
+    # When https://github.com/python/mypy/issues/1153 is fixed, these type
+    # ignores should be removed
+    class Endianness(enum.Enum):  # type: ignore
         BigEndian = enum.auto()
         LittleEndian = enum.auto()
 
     @dataclass
-    class InstructionTextTokenType:
+    class InstructionTextTokenType:  # type: ignore
         # Text that doesn't fit into the other tokens
         TextToken = enum.auto
         # The instruction mnemonic
@@ -47,7 +49,7 @@ except ModuleNotFoundError:
         FloatingPointToken = enum.auto
 
     @dataclass
-    class InstructionTextToken:
+    class InstructionTextToken:  # type: ignore
         token_type: InstructionTextTokenType
         text: str
         value: int = 0
@@ -56,7 +58,7 @@ except ModuleNotFoundError:
         context = None
         address: int = 0
         confidence: int = 255
-        typeNames = []
+        typeNames: List[Any] = []
         width: int = 0
 
 

@@ -9,7 +9,11 @@ from pickle import dump
 from typing import Dict, List, Optional, SupportsInt, Tuple, Union, cast
 
 try:
-    from .smali import SmaliInstructionFormat, SmaliInstructionInfo, INSTRUCTIONS_PICKLE_PATH
+    from .smali import (
+        SmaliInstructionFormat,
+        SmaliInstructionInfo,
+        INSTRUCTIONS_PICKLE_PATH,
+    )
 except ModuleNotFoundError:
     from smali import (  # type: ignore
         SmaliInstructionFormat,
@@ -60,7 +64,7 @@ class TableParser(HTMLParser):
             self.cell += data
 
 
-def parse_syntax(cell: str, opcode: int = None) -> Tuple[str, str]:
+def parse_syntax(cell: str, opcode: Optional[int] = None) -> Tuple[str, str]:
     if cell == "(unused)":
         return "", ""
     elif opcode is None:
@@ -84,7 +88,9 @@ def parse_syntax(cell: str, opcode: int = None) -> Tuple[str, str]:
 
 
 def parse_row(
-    row: List[str], formats: Dict[str, SmaliInstructionFormat], opcode: int = None
+    row: List[str],
+    formats: Dict[str, SmaliInstructionFormat],
+    opcode: Optional[int] = None,
 ) -> SmaliInstructionInfo:
     formatid = row[0].split(" ")[1]
     mnemonic, syntax = parse_syntax(row[1], opcode)

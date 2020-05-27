@@ -4,10 +4,20 @@ import re
 import unittest
 from pathlib import Path
 from struct import unpack
-from typing import TYPE_CHECKING, Any, Dict, List, Match, Tuple, Union, cast
+from typing import (
+    NewType,
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Match,
+    Tuple,
+    Union,
+    cast,
+)
 
 try:
-    from compat import (
+    from compat import (  # type: ignore
         log_debug,
         log_error,
         log_warn,
@@ -99,6 +109,19 @@ class SmaliFillArrayDataPayload:
     element_width: int  # ushort
     size: int  # uint
     data: bytes  # ubyte
+
+
+PseudoInstructions = NewType(
+    "PseudoInstructions",
+    Dict[
+        "FileOffset",
+        Union[
+            SmaliPackedSwitchPayload,
+            SmaliFillArrayDataPayload,
+            SmaliSparseSwitchPayload,
+        ],
+    ],
+)
 
 
 def slice_nibbles(data: bytes, start_nibble: int, size: int = 1) -> int:
@@ -323,7 +346,7 @@ class TestFormattingArgsWithSyntax(unittest.TestCase):
 
 
 def tokenize_syntax(
-    df: 'DexFile', word: str, args: Dict[str, int]
+    df: "DexFile", word: str, args: Dict[str, int]
 ) -> List[InstructionTextToken]:
     tokens = list()
     tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, " "))
@@ -492,11 +515,12 @@ def tokenize_syntax(
 
 
 def disassemble(
-    df: 'DexFile', data: bytes, addr: 'FileOffset'
+    df: "DexFile", data: bytes, addr: "FileOffset"
 ) -> Tuple[List[InstructionTextToken], int]:
     # Static variable
     if "insns" not in disassemble.__dict__:
-        disassemble.insns = load_insns()
+        # https://github.com/python/mypy/issues/708
+        disassemble.insns = load_insns()  # type: ignore[attr-defined]
 
     if len(data) < 2:
         log_warn(
@@ -517,8 +541,9 @@ def disassemble(
             text += "    .end packed-switch"
         elif data[1] == 2:
             # sparse-switch
+            # FIXME why do these casts not work?
             ps = cast(SmaliSparseSwitchPayload, df.pseudoinstructions[addr])
-            text = f".sparse-switch\n"
+            text = ".sparse-switch\n"
             text += "".join(
                 [
                     f"        {hex(ps.keys[i])} -> :sswitch_offset_{ps.targets[i]:x}\n"
@@ -530,7 +555,7 @@ def disassemble(
             ps = cast(SmaliFillArrayDataPayload, df.pseudoinstructions[addr])
             text = f"pseudo-instruction: {ps}"
         else:
-            raise ValueError(f'Invalid pseudo-instruction with type {data[1]}')
+            raise ValueError(f"Invalid pseudo-instruction with type {data[1]}")
         return (
             [
                 InstructionTextToken(
@@ -542,7 +567,7 @@ def disassemble(
 
     # Now handle normal instructions
     tokens = list()
-    insn_info = disassemble.insns[data[0]]
+    insn_info = disassemble.insns[data[0]]  # type: ignore[attr-defined]
     tokens.append(
         InstructionTextToken(
             InstructionTextTokenType.InstructionToken, insn_info.mnemonic
@@ -607,18 +632,13 @@ def disassemble(
 
 
 def disassemble_pseudoinstructions(
-    data: bytes, addr: int
-) -> Dict[
-    int,
-    Union[
-        SmaliPackedSwitchPayload, SmaliFillArrayDataPayload, SmaliSparseSwitchPayload,
-    ],
-]:
+    data: bytes, addr: "FileOffset"
+) -> PseudoInstructions:
     # Static variable
     if "insns" not in disassemble.__dict__:
-        disassemble.insns = load_insns()
+        disassemble.insns = load_insns()  # type: ignore[attr-defined]
 
-    pseudoinstructions = dict()
+    pseudoinstructions: PseudoInstructions = cast(PseudoInstructions, dict())
     code_offset = 0
     while code_offset < len(data):
         if data[code_offset + 1] == 0 and data[code_offset] != 0:
@@ -629,7 +649,9 @@ def disassemble_pseudoinstructions(
             if data[code_offset] == 1:
                 # packed-switch-payload
                 size = unpack("<H", data_swapped[:2])[0]
-                pseudoinstructions[addr + code_offset] = SmaliPackedSwitchPayload(
+                pseudoinstructions[
+                    cast("FileOffset", addr + code_offset)
+                ] = SmaliPackedSwitchPayload(
                     _total_size=size * 4 + 8,
                     size=size,
                     first_key=unpack("<i", data_swapped[2:6])[0],
@@ -642,7 +664,9 @@ def disassemble_pseudoinstructions(
             elif data[code_offset] == 2:
                 # sparse-switch-payload
                 size = unpack("<H", data_swapped[:2])[0]
-                pseudoinstructions[addr + code_offset] = SmaliSparseSwitchPayload(
+                pseudoinstructions[
+                    cast("FileOffset", addr + code_offset)
+                ] = SmaliSparseSwitchPayload(
                     _total_size=size * 8 + 4,
                     size=size,
                     keys=[
@@ -659,7 +683,9 @@ def disassemble_pseudoinstructions(
                 # fill-array-data-payload
                 element_width = unpack("<H", data_swapped[:2])[0]
                 size = unpack("<I", data_swapped[2:6])[0]
-                pseudoinstructions[addr + code_offset] = SmaliFillArrayDataPayload(
+                pseudoinstructions[
+                    cast("FileOffset", addr + code_offset)
+                ] = SmaliFillArrayDataPayload(
                     _total_size=((size * element_width + 1) // 2) * 2 + 8,
                     element_width=element_width,
                     size=size,
@@ -673,7 +699,7 @@ def disassemble_pseudoinstructions(
                 code_offset += 2
         else:
             # Normal instruction
-            insn_info = disassemble.insns[data[code_offset + 1]]
+            insn_info = disassemble.insns[data[code_offset + 1]]  # type: ignore[attr-defined]
             code_offset += insn_info.fmt.insn_len * 2
     return pseudoinstructions
 
