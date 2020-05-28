@@ -17,3 +17,9 @@ I don't have anything fancy to recommend here, but some tips for first-time Bina
 2. You have to completely restart binja for BinaryView changes to take effect
 3. Don't ctrl-c in the terminal. It gets weird
 4. In binja use ctrl-p to do everything
+
+## Testing
+
+This could use a lot of improvement. See https://github.com/CarveSystems/banjo/issues/21 to talk about testing output.
+
+There are some unittest classes for some low-level functions. Use `python -m unittest android.dex` and `python -m unittest android.smali` to run those.

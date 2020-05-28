@@ -343,6 +343,8 @@ class AccessFlag:
         https://android.googlesource.com/platform/dalvik2/+/refs/heads/master/dexgen/src/com/android/dexgen/rop/code/AccessFlags.java#297
         https://github.com/JesusFreke/smali/blob/239b64ba003accffd1b0cf7c1c58d35435f5e94a/dexlib2/src/main/java/org/jf/dexlib2/AccessFlags.java
         """
+        if self.value == 0:
+            return ""
         val = self.value
         res = list()
         if val & AccessFlagEnum.ACC_PUBLIC:
@@ -410,10 +412,7 @@ class AccessFlag:
             raise ValueError(
                 f"Failed to make string with all access flags. Value: {hex(self.value)}. Remaining: {hex(val)}"
             )
-        if len(res):
-            return " ".join(res) + " "
-        else:
-            return " ".join(res)
+        return " ".join(res) + " "
 
 
 class TestAccessFlag(unittest.TestCase):
@@ -425,7 +424,7 @@ class TestAccessFlag(unittest.TestCase):
 
     def test_single(self) -> None:
         """Single modifier."""
-        self.assertEqual(str(AccessFlag(AccessFlagEnum.ACC_PUBLIC, "class")), "public")
+        self.assertEqual(str(AccessFlag(AccessFlagEnum.ACC_PUBLIC, "class")), "public ")
 
     def test_sorted(self) -> None:
         """Cases with specified orders."""
@@ -435,10 +434,83 @@ class TestAccessFlag(unittest.TestCase):
                     AccessFlagEnum.ACC_PUBLIC | AccessFlagEnum.ACC_STATIC, "method"
                 )
             ),
-            "public static",
+            "public static ",
         )
-
-    # TODO
+        self.assertEqual(
+            str(
+                AccessFlag(
+                    AccessFlagEnum.ACC_PUBLIC
+                    | AccessFlagEnum.ACC_PRIVATE
+                    | AccessFlagEnum.ACC_PROTECTED
+                    | AccessFlagEnum.ACC_STATIC
+                    | AccessFlagEnum.ACC_FINAL
+                    | AccessFlagEnum.ACC_SYNCHRONIZED
+                    | AccessFlagEnum.ACC_VOLATILE
+                    | AccessFlagEnum.ACC_TRANSIENT
+                    | AccessFlagEnum.ACC_NATIVE
+                    | AccessFlagEnum.ACC_INTERFACE
+                    | AccessFlagEnum.ACC_ABSTRACT
+                    | AccessFlagEnum.ACC_STRICT
+                    | AccessFlagEnum.ACC_SYNTHETIC
+                    | AccessFlagEnum.ACC_ANNOTATION
+                    | AccessFlagEnum.ACC_ENUM
+                    | AccessFlagEnum.ACC_CONSTRUCTOR
+                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
+                    "method",
+                )
+            ),
+            "public private protected static final synchronized bridge varargs native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
+        )
+        self.assertEqual(
+            str(
+                AccessFlag(
+                    AccessFlagEnum.ACC_PUBLIC
+                    | AccessFlagEnum.ACC_PRIVATE
+                    | AccessFlagEnum.ACC_PROTECTED
+                    | AccessFlagEnum.ACC_STATIC
+                    | AccessFlagEnum.ACC_FINAL
+                    | AccessFlagEnum.ACC_SYNCHRONIZED
+                    | AccessFlagEnum.ACC_VOLATILE
+                    | AccessFlagEnum.ACC_TRANSIENT
+                    | AccessFlagEnum.ACC_NATIVE
+                    | AccessFlagEnum.ACC_INTERFACE
+                    | AccessFlagEnum.ACC_ABSTRACT
+                    | AccessFlagEnum.ACC_STRICT
+                    | AccessFlagEnum.ACC_SYNTHETIC
+                    | AccessFlagEnum.ACC_ANNOTATION
+                    | AccessFlagEnum.ACC_ENUM
+                    | AccessFlagEnum.ACC_CONSTRUCTOR
+                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
+                    "field",
+                )
+            ),
+            "public private protected static final synchronized volatile transient native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
+        )
+        self.assertEqual(
+            str(
+                AccessFlag(
+                    AccessFlagEnum.ACC_PUBLIC
+                    | AccessFlagEnum.ACC_PRIVATE
+                    | AccessFlagEnum.ACC_PROTECTED
+                    | AccessFlagEnum.ACC_STATIC
+                    | AccessFlagEnum.ACC_FINAL
+                    | AccessFlagEnum.ACC_SYNCHRONIZED
+                    | AccessFlagEnum.ACC_VOLATILE
+                    | AccessFlagEnum.ACC_TRANSIENT
+                    | AccessFlagEnum.ACC_NATIVE
+                    | AccessFlagEnum.ACC_INTERFACE
+                    | AccessFlagEnum.ACC_ABSTRACT
+                    | AccessFlagEnum.ACC_STRICT
+                    | AccessFlagEnum.ACC_SYNTHETIC
+                    | AccessFlagEnum.ACC_ANNOTATION
+                    | AccessFlagEnum.ACC_ENUM
+                    | AccessFlagEnum.ACC_CONSTRUCTOR
+                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
+                    "class",
+                )
+            ),
+            "public private protected static final super volatile transient native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
+        )
 
 
 class ValueType(IntEnum):

@@ -281,7 +281,27 @@ def endian_swap_shorts(data: bytes) -> bytes:
 
 
 def format_args_with_syntax(args: Dict[str, int], syntax: str) -> str:
-    """See TestFormattingArgsWithSyntax."""
+    """Format syntax strings with parsed arguments.
+
+    "Syntax" and "Arguments" come from the table on
+    https://source.android.com/devices/tech/dalvik/dalvik-bytecode#instructions
+    This function takes in a dictionary mapping the character symbol for
+    an argument to its integer value, and replaces all groups of
+    capital letters in the syntax string with the corresponding values.
+
+    Note that consecutive instances of the same replacement character
+    are grouped. Replacing A with 5 in "AAAA A" results in "5 5".
+
+    Substitutions preceded by a 'v' or '@' for registers or indices are
+    treated as unsigned and all others cases are treated as signed. This
+    isn't explicit in the documentation, but it seems to work.
+
+    For easier formatting in `tokenize_syntax`, the integers are
+    inserted in bare hexadecimal format. Further formatting is the
+    responsibility of the calling function.
+
+    See test case examples in TestFormattingArgsWithSyntax.
+    """
 
     def fmt(m: Match[str]) -> str:
         val = args[m[0][-1]]
@@ -311,14 +331,19 @@ class TestFormattingArgsWithSyntax(unittest.TestCase):
         )
         self.assertEqual(format_args_with_syntax({"A": 4}, "long numAAAA"), "long num4")
 
+    def test_large_replacement(self) -> None:
+        self.assertEqual(
+            format_args_with_syntax({"A": 0x999}, "the number is AAAA"), "the number is 999"
+        )
+
     def test_multiple_replacements(self) -> None:
         self.assertEqual(
             format_args_with_syntax({"A": 1, "B": 0}, "first A then B"),
             "first 1 then 0",
         )
         self.assertEqual(
-            format_args_with_syntax({"A": 4, "B": 234}, "first AAAA then BBBB"),
-            "first 4 then 234",
+            format_args_with_syntax({"A": 4, "B": 5}, "first AAAA then BBBB"),
+            "first 4 then 5",
         )
 
     def test_signed_replacements(self) -> None:
@@ -329,19 +354,19 @@ class TestFormattingArgsWithSyntax(unittest.TestCase):
             format_args_with_syntax({"A": 0xFF}, "negative AA"), "negative -1"
         )
         self.assertEqual(
-            format_args_with_syntax({"A": 0xF6}, "negative AA"), "negative -10"
+            format_args_with_syntax({"A": 0xF6}, "negative AA"), "negative -a"
         )
 
     def test_unsigned_replacements(self) -> None:
         self.assertEqual(
-            format_args_with_syntax({"A": 0xF}, "positive vA"), "positive v15"
+            format_args_with_syntax({"A": 0xF}, "positive vA"), "positive vf"
         )
         self.assertEqual(
             format_args_with_syntax({"A": 0xFFFF}, "positive field@AAAA"),
-            "positive field@65535",
+            "positive field@ffff",
         )
         self.assertEqual(
-            format_args_with_syntax({"A": 0xF}, "positive vAA"), "positive v15"
+            format_args_with_syntax({"A": 0xF}, "positive vAA"), "positive vf"
         )
 
 
