@@ -566,19 +566,18 @@ def disassemble(
             text += "    .end packed-switch"
         elif data[1] == 2:
             # sparse-switch
-            # FIXME why do these casts not work?
-            ps = cast(SmaliSparseSwitchPayload, df.pseudoinstructions[addr])
+            ss = cast(SmaliSparseSwitchPayload, df.pseudoinstructions[addr])
             text = ".sparse-switch\n"
             text += "".join(
                 [
-                    f"        {hex(ps.keys[i])} -> :sswitch_offset_{ps.targets[i]:x}\n"
-                    for i in range(ps.size)
+                    f"        {hex(ss.keys[i])} -> :sswitch_offset_{ss.targets[i]:x}\n"
+                    for i in range(ss.size)
                 ]
             )
             text += "    .end sparse-switch"
         elif data[1] == 3:
-            ps = cast(SmaliFillArrayDataPayload, df.pseudoinstructions[addr])
-            text = f"pseudo-instruction: {ps}"
+            fa = cast(SmaliFillArrayDataPayload, df.pseudoinstructions[addr])
+            text = f"pseudo-instruction: {fa}"
         else:
             raise ValueError(f"Invalid pseudo-instruction with type {data[1]}")
         return (
