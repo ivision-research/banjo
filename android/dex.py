@@ -1264,10 +1264,9 @@ class DexFile(object):
 
     def _parse_encoded_value(self, data: bytes) -> Tuple[DexValue, int]:
         def _sign_extend(data: bytes, size: int) -> bytes:
-            return (b"\xff" if data[0] & 0xF0 else b"\x00") * (size - len(data)) + data
+            return data + (b"\xff" if data[-1] & 0x80 else b"\x00") * (size - len(data))
 
         def _zero_extend_right(data: bytes, size: int) -> bytes:
-            # FIXME is this the right way?
             return data + b"\x00" * (size - len(data))
 
         def _zero_extend(data: bytes, size: int) -> bytes:
