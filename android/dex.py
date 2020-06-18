@@ -549,6 +549,58 @@ class DexValue:
     type_: ValueType
     value: Any
 
+    @property
+    def value_str(self) -> str:
+        if self.type_ == ValueType.VALUE_BYTE:
+            return hex(self.value) + "t"
+        elif self.type_ == ValueType.VALUE_SHORT:
+            return hex(self.value) + "s"
+        elif self.type_ == ValueType.VALUE_CHAR:
+            return f"'{self.value.encode('unicode-escape').decode()}'"
+        elif self.type_ == ValueType.VALUE_INT:
+            return hex(self.value)
+        elif self.type_ == ValueType.VALUE_LONG:
+            return hex(self.value) + "L"
+        elif self.type_ == ValueType.VALUE_FLOAT:
+            return f"{self.value}f"
+        elif self.type_ == ValueType.VALUE_DOUBLE:
+            return str(self.value)
+        elif self.type_ == ValueType.VALUE_METHOD_TYPE:
+            # Needs testing
+            return f"({self.value.return_type})"
+        elif self.type_ == ValueType.VALUE_METHOD_HANDLE:
+            # Needs testing
+            return f"{self.value.type_}@{self.value.field_or_method_id}"
+        elif self.type_ == ValueType.VALUE_STRING:
+            return f'"{self.value.encode("unicode-escape").decode()}"'
+        elif self.type_ == ValueType.VALUE_TYPE:
+            # Needs testing
+            return self.value
+        elif self.type_ == ValueType.VALUE_FIELD:
+            # TODO If this is called from the same class, the class-> shouldn't be included
+            # Needs testing
+            return f"{self.value.class_}->{self.value.name}:{self.type_}"
+        elif self.type_ == ValueType.VALUE_METHOD:
+            # Same as ^
+            return f"{self.value.class_}->{self.value.name}({self.proto})"
+        elif self.type_ == ValueType.VALUE_ENUM:
+            # Same as ^
+            return f".enum {self.value.class_}->{self.value.name}:{self.type_}"
+        elif self.type_ == ValueType.VALUE_ARRAY:
+            # Needs testing
+            return "{" + ",".join([f"\n    {x.value_str}" for x in self.value]) + "}"
+        elif self.type_ == ValueType.VALUE_ANNOTATION:
+            # TODO annotations
+            return (
+                ".subannotation <type>\n"
+                # + ",".join([f"\n    something = something" for x in self.something])
+                + ".end subannotation"
+            )
+        elif self.type_ == ValueType.VALUE_NULL:
+            return "null"
+        elif self.type_ == ValueType.VALUE_BOOLEAN:
+            return str(self.value).lower()
+
 
 DexEncodedArray = List[DexValue]
 
@@ -683,7 +735,7 @@ class DexClassDef:
     source_file: Optional[str]
     annotations: Optional[FileOffset]  # TODO
     class_data: Optional[DexClassData]
-    static_values: Optional[List[DexValue]]
+    static_values: List[DexValue]
 
 
 def _parse_ushort(endianness: Endianness, data: bytes) -> int:
@@ -912,9 +964,9 @@ class DexFile(object):
         i_offset = (4 - (offset_to_section)) % 4
         self.field_ids = [
             DexFieldId(
-                self.type_ids[self._parse_ushort(data[i : i + 2])],
-                self.type_ids[self._parse_ushort(data[i + 2 : i + 4])],
-                self.strings[self._parse_uint(data[i + 4 : i + 8])],
+                class_=self.type_ids[self._parse_ushort(data[i : i + 2])],
+                type_=self.type_ids[self._parse_ushort(data[i + 2 : i + 4])],
+                name=self.strings[self._parse_uint(data[i + 4 : i + 8])],
             )
             for i in range(i_offset, i_offset + size * 8, 8)
         ]
@@ -936,8 +988,9 @@ class DexFile(object):
         self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
-        self.class_defs = [
-            DexClassDef(
+        self.class_defs = list()
+        for i in range(i_offset, size * 32 + i_offset, 32):
+            cdef = DexClassDef(
                 class_type=self.type_ids[self._parse_uint(data[i : i + 4])],
                 access_flags=AccessFlag(self._parse_uint(data[i + 4 : i + 8]), "class"),
                 superclass=self.type_ids[self._parse_uint(data[i + 8 : i + 12])]
@@ -961,10 +1014,17 @@ class DexFile(object):
                     self._parse_uint(data[i + 28 : i + 32])
                 ]
                 if self._parse_uint(data[i + 28 : i + 32])
-                else None,  # FIXME: this should be padded to length of static fields in class
+                else list(),
             )
-            for i in range(i_offset, size * 32 + i_offset, 32)
-        ]
+            # Right now static_values is truncated like it is in the dex file.
+            # It could pad out the array like the spec says, but I think that
+            # would be harder
+            # if cdef.class_data is not None:
+            #     for i in range(
+            #         len(cdef.static_values), len(cdef.class_data.static_fields)
+            #     ):
+            #         cdef.static_values.append(None)
+            self.class_defs.append(cdef)
 
     def parse_call_site_ids(
         self, data: bytes, size: int, offset_to_section: FileOffset

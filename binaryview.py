@@ -78,12 +78,13 @@ class DexParser(BackgroundTaskThread):  # type: ignore
             | SegmentFlag.SegmentContainsCode,
         )
 
-        # Process code blocks
+        # Process classes and code blocks
         # For each code block, add
         # - binja section
         # - binja function
         # - binja symbol
         # - comments for tries and catches
+        # TODO figure out where to put static field initializations
         self.progress = self.progress_title + ": processing code blocks"
         defined_functions: Set[str] = set()
         for class_def in df.class_defs:

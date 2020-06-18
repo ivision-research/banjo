@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 from typing import TextIO
 
-from android.dex import DexClassDef, DexEncodedMethod, DexFile, FileOffset
+from android.dex import DexClassDef, DexEncodedMethod, DexFile, FileOffset, ValueType
 from android.smali import disassemble, endian_swap_shorts
 
 THROW = False
@@ -43,14 +43,38 @@ def write_class(df: DexFile, pth: Path, cls: DexClassDef) -> None:
         )
         if not cls.class_data:
             return
+        if cls.class_data.static_fields:
+            f.write("\n# static fields\n")
+            for i, sf in enumerate(cls.class_data.static_fields):
+                f.write(f".field {sf.access_flags}{sf.field.name}:{sf.field.type_}")
+                if i < len(cls.static_values) and cls.static_values[i].value is not None:
+                    # FIXME sometimes this prints out values (that are 0) when
+                    # baksmali doesn't
+                    f.write(f" = {cls.static_values[i].value_str}\n\n")
+                else:
+                    f.write("\n")
+                    # # TODO annotation here
+                    # f.write(".end field\n")
+                # else:
+        if cls.class_data.instance_fields:
+            f.write("\n# instance fields\n")
+            for i, inf in enumerate(cls.class_data.instance_fields):
+                f.write(
+                    f".field {inf.access_flags}{inf.field.name}:{inf.field.type_}\n"
+                )
+                # TODO insert annotation here if it exists
+                if False:  # if there is an annotation
+                    f.write(".end field\n")
+                else:
+                    f.write("\n")
         if cls.class_data.direct_methods:
             f.write("\n# direct methods")
-        for dm in cls.class_data.direct_methods:
-            write_method(df, f, dm)
+            for dm in cls.class_data.direct_methods:
+                write_method(df, f, dm)
         if cls.class_data.virtual_methods:
             f.write("\n# virtual methods")
-        for vm in cls.class_data.virtual_methods:
-            write_method(df, f, vm)
+            for vm in cls.class_data.virtual_methods:
+                write_method(df, f, vm)
 
 
 def dis_file(fn: str, out_dir: str = "out") -> None:
