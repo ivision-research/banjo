@@ -2,7 +2,6 @@
 import base64
 import dataclasses
 import json
-import pickle
 from typing import Any, Set
 
 from binaryninja.binaryview import BinaryView  # type: ignore
@@ -38,8 +37,6 @@ class JsonWriter(BackgroundTaskThread):  # type: ignore
         self.fn = fn
 
     def run(self) -> None:
-        with open(self.fn + ".pickle", "bw") as fb:
-            pickle.dump(self.obj, fb)
         with open(self.fn, "w") as f:
             json.dump(self.obj.__dict__, f, cls=DataclassJSONEncoder)
 
@@ -55,16 +52,16 @@ class DexParser(BackgroundTaskThread):  # type: ignore
     def run(self) -> None:
         try:
             df = DexFile(self.bv.raw.read(0, self.bv.raw.end))
+            self.bv.arch.df = df
         except Exception:
             log_error("caught error, writing json anyway")
             raise
         finally:
+            pass
             # TODO add gui button to do this
             # TODO make this depend on filename
-            # FIXME this is a file write -> code exec vuln with the right
-            # timing
-            background_task = JsonWriter(df, "/tmp/out.json")
-            background_task.start()
+            # background_task = JsonWriter(df, "/tmp/out.json")
+            # background_task.start()
 
         data_size = df._parse_uint(self.bv.hdr[104:108])
         data_off = df._parse_uint(self.bv.hdr[108:112])

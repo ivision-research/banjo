@@ -1,5 +1,4 @@
 """Architecture class for Binary Ninja plugin."""
-import pickle
 import time
 from typing import List, Tuple, cast
 
@@ -42,7 +41,7 @@ class Smali(Architecture):  # type: ignore
         - get_instruction_low_level_il
 
     There is also load_dex(), which is called the first time any of the three
-    functions are called. It loads the parsed DexFile class from disk.
+    functions are called. It grabs the reference to DexFile.
     """
 
     name = "Smali"
@@ -80,18 +79,11 @@ class Smali(Architecture):  # type: ignore
         #     '{"description" : "test descr", "title" : "test title", "default" : "asd", "type" : "string"}',
         # )
         # Setting group: newgrp does not exist!
-        while True:
-            try:
-                # FIXME don't hardcode filename. See previous comment
-                with open("/tmp/out.json.pickle", "br") as f:
-                    self.df: DexFile = pickle.load(f)
-                    self.inialized_df = True
-                    break
-            except FileNotFoundError:
-                log_debug("Dex file decoding not finished. Sleeping")
-                time.sleep(1)
+        self.df: DexFile = Architecture['Smali'].df
+        self.inialized_df = True
 
     def get_instruction_info(self, data: bytes, addr: FileOffset) -> InstructionInfo:
+
         if not self.inialized_df:
             self.load_dex()
         ii = InstructionInfo()
