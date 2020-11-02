@@ -16,7 +16,7 @@ from binaryninja.platform import Platform  # type: ignore
 from binaryninja.plugin import BackgroundTaskThread  # type: ignore
 from binaryninja.types import Symbol  # type: ignore
 
-from .android.dex import AccessFlag, DexFile
+from .android.dex import AccessFlag, DexFile, parse_uint
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
@@ -62,18 +62,6 @@ class DexParser(BackgroundTaskThread):  # type: ignore
             # TODO make this depend on filename
             # background_task = JsonWriter(df, "/tmp/out.json")
             # background_task.start()
-
-        data_size = df._parse_uint(self.bv.hdr[104:108])
-        data_off = df._parse_uint(self.bv.hdr[108:112])
-        self.bv.add_auto_segment(
-            data_off,
-            data_size,
-            data_off,
-            data_size,
-            SegmentFlag.SegmentReadable
-            | SegmentFlag.SegmentContainsData
-            | SegmentFlag.SegmentContainsCode,
-        )
 
         # Process classes and code blocks
         # For each code block, add
@@ -149,6 +137,25 @@ class Dex(BinaryView):  # type: ignore
         """Main function, calls DexParser.run()"""
         self.platform = Platform["Smali"]
         self.hdr = self.raw.read(0, 0x70)
+        endian_bytes = self.hdr[40:44]
+        if endian_bytes == b"\x12\x34\x56\x78":
+            data_size = parse_uint(Endianness.BigEndian, self.hdr[104:108])
+            data_off = parse_uint(Endianness.BigEndian, self.hdr[108:112])
+        elif endian_bytes == b"\x78\x56\x34\x12":
+            data_size = parse_uint(Endianness.LittleEndian, self.hdr[104:108])
+            data_off = parse_uint(Endianness.LittleEndian, self.hdr[108:112])
+        else:
+            raise ValueError(f"Invalid endianness found: {endian_bytes!r}")
+        self.add_auto_segment(
+            data_off,
+            data_size,
+            data_off,
+            data_size,
+            SegmentFlag.SegmentReadable
+            | SegmentFlag.SegmentContainsData
+            | SegmentFlag.SegmentContainsCode,
+        )
+
         background_parser = DexParser(self)
         background_parser.start()
         return True

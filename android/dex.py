@@ -738,14 +738,14 @@ class DexClassDef:
     static_values: List[DexValue]
 
 
-def _parse_ushort(endianness: Endianness, data: bytes) -> int:
+def parse_ushort(endianness: Endianness, data: bytes) -> int:
     if endianness == Endianness.LittleEndian:
         return cast(int, unpack("<H", data)[0])
     else:
         return cast(int, unpack(">H", data)[0])
 
 
-def _parse_uint(endianness: Endianness, data: bytes) -> int:
+def parse_uint(endianness: Endianness, data: bytes) -> int:
     if endianness == Endianness.LittleEndian:
         return cast(int, unpack("<I", data)[0])
     else:
@@ -756,10 +756,10 @@ class DexFile(object):
     """Object to contain the entire parsed Dex."""
 
     def _parse_ushort(self, data: bytes) -> int:
-        return _parse_ushort(self.endianness, data)
+        return parse_ushort(self.endianness, data)
 
     def _parse_uint(self, data: bytes) -> int:
-        return _parse_uint(self.endianness, data)
+        return parse_uint(self.endianness, data)
 
     def __init__(self, data: bytes) -> None:
         endian_bytes = data[40:44]
