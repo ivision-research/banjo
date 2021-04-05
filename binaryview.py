@@ -52,7 +52,9 @@ class DexParser(BackgroundTaskThread):  # type: ignore
     def run(self) -> None:
         try:
             df = DexFile(self.bv.raw.read(0, self.bv.raw.end))
-            self.bv.arch.df = df
+            if not hasattr(self.bv.arch, "dfs"):
+                self.bv.arch.dfs = dict()
+            self.bv.arch.dfs[self.bv.file.filename.rsplit("/", 1)[-1]] = df
         except Exception:
             log_error("caught error, writing json anyway")
             raise

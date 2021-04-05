@@ -40,8 +40,8 @@ class Smali(Architecture):  # type: ignore
         - get_instruction_text
         - get_instruction_low_level_il
 
-    There is also load_dex(), which is called the first time any of the three
-    functions are called. It grabs the reference to DexFile.
+    There is also load_dex(), which is called at the beginning of all three
+    functions. It grabs the reference to the DexFile in view.
     """
 
     name = "Smali"
@@ -59,33 +59,14 @@ class Smali(Architecture):  # type: ignore
 
     def __init__(self) -> None:
         self.insns = load_insns()
-        self.inialized_df: bool = False
         super().__init__()
 
     def load_dex(self) -> None:
-        """Load DexFile from disk. Should only be called once."""
-        # FIXME all tabs in a window share the same Architecture class,
-        # apparently. This means that, as far as I know, there's no way to
-        # store this information per-tab. This could be hacked around if there
-        # was a way to determine what binary is opened, but I don't see a way
-        # to do that either.
-        #
-        # Edit: The settings API seems to provide a way to do this, but the
-        # 'Context' instance doesn't seem to work.
-        # https://api.binary.ninja/binaryninja.settings-module.html
-        # Settings('Context').register_group('newgrp', 'asdfasdf')
-        # Settings('Context').register_setting(
-        #     'newgrp.asdff',
-        #     '{"description" : "test descr", "title" : "test title", "default" : "asd", "type" : "string"}',
-        # )
-        # Setting group: newgrp does not exist!
-        self.df: DexFile = Architecture['Smali'].df
-        self.inialized_df = True
+        """Set self.df to DexFile of focused file."""
+        self.df: DexFile = Architecture["Smali"].dfs[Architecture["Smali"].frame]
 
     def get_instruction_info(self, data: bytes, addr: FileOffset) -> InstructionInfo:
-
-        if not self.inialized_df:
-            self.load_dex()
+        self.load_dex()
         ii = InstructionInfo()
 
         # Handle pseudoinstructions
@@ -155,15 +136,13 @@ class Smali(Architecture):  # type: ignore
     def get_instruction_text(
         self, data: bytes, addr: FileOffset
     ) -> Tuple[List[InstructionTextToken], int]:
-        if not self.inialized_df:
-            self.load_dex()
+        self.load_dex()
         return disassemble(self.df, data, addr)
 
     def get_instruction_low_level_il(
         self, data: bytes, addr: FileOffset, il: LowLevelILFunction
     ) -> int:
-        if not self.inialized_df:
-            self.load_dex()
+        self.load_dex()
         insn_info = self.insns[data[0]]
         if data[0] == 0x2B or data[0] == 0x2C and False:
             data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
