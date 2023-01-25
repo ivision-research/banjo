@@ -2,7 +2,8 @@
 
 [disas_to_files.py](../disas_to_files.py)
 
-This is a script to emulate the basics of baksmali. It doesn't have the same level of polish as the Binary Ninja plugin does (and that's saying something).
+This is a script to emulate the basics of baksmali. It doesn't have the same level of polish as the Binary Ninja plugin
+does (and that's saying something).
 
 There are two goals for the script:
 

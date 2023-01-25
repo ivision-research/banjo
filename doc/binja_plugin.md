@@ -12,9 +12,12 @@ Binary Ninja's settings have a large impact on the UX of this plugin.
 
 Ensure that `python.interpreter` is set to Python3.8 or higher, e.g. `/usr/lib/libpython3.8.so.1.0`.
 
-If the setting `analysis.mode` is `controlFlow` or `basic`, loading Dex files works as expected. If it is `intermediate` or `full`, then the default view mode is hex, and nothing disassembles until the mode is switched to linear or graph disassembly.
+If the setting `analysis.mode` is `controlFlow` or `basic`, loading Dex files works as expected. If it is `intermediate`
+or `full`, then the default view mode is hex, and nothing disassembles until the mode is switched to linear or graph
+disassembly.
 
-None of Binary Ninja's analysis is useful for Dex files. The following settings significantly increase the loading speed:
+None of Binary Ninja's analysis is useful for Dex files. The following settings significantly increase the loading
+speed:
 
 ```json
 	"analysis" :

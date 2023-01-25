@@ -78,8 +78,8 @@ class DexParser(BackgroundTaskThread):  # type: ignore
             if not class_def.class_data:
                 continue
             for method in (
-                class_def.class_data.direct_methods
-                + class_def.class_data.virtual_methods
+                    class_def.class_data.direct_methods
+                    + class_def.class_data.virtual_methods
             ):
                 if method.code:
                     off = method.code._insns_off
@@ -112,7 +112,7 @@ class DexParser(BackgroundTaskThread):  # type: ignore
                             )
                             self.bv.set_comment_at(
                                 off + try_item.start_addr * 2 + try_item.insn_count * 2,
-                                f":try_end_{try_item.start_addr+try_item.insn_count:x}",
+                                f":try_end_{try_item.start_addr + try_item.insn_count:x}",
                             )
                             self.bv.set_comment_at(
                                 off + try_item.start_addr * 2 + try_item.insn_count * 2,

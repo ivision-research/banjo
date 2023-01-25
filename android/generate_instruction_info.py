@@ -72,7 +72,7 @@ def parse_syntax(cell: str, opcode: Optional[int] = None) -> Tuple[str, str]:
             if "(" in cell:
                 # Remove '(with supplemental data as specified below in "fill-array-data-payload Format")'
                 cell = cell[: cell.find("(")]
-            return cell[: cell.find(" ")], cell[cell.find(" ") + 1 :]
+            return cell[: cell.find(" ")], cell[cell.find(" ") + 1:]
         else:
             # Just mnemonic, no args
             return cell, ""
@@ -81,16 +81,16 @@ def parse_syntax(cell: str, opcode: Optional[int] = None) -> Tuple[str, str]:
         for line in cell.split("\n"):
             if line.startswith(" "):
                 if int(line[4:6], 16) == opcode:
-                    return line[8:], header[header.find(" ") + 1 :]
+                    return line[8:], header[header.find(" ") + 1:]
             else:
                 header = line
     raise ValueError("Failed to find opcode")
 
 
 def parse_row(
-    row: List[str],
-    formats: Dict[str, SmaliInstructionFormat],
-    opcode: Optional[int] = None,
+        row: List[str],
+        formats: Dict[str, SmaliInstructionFormat],
+        opcode: Optional[int] = None,
 ) -> SmaliInstructionInfo:
     formatid = row[0].split(" ")[1]
     mnemonic, syntax = parse_syntax(row[1], opcode)

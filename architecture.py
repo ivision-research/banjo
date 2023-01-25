@@ -1,5 +1,4 @@
 """Architecture class for Binary Ninja plugin."""
-import time
 from typing import List, Tuple, cast
 
 from binaryninja.architecture import Architecture  # type: ignore
@@ -15,12 +14,10 @@ from binaryninja.lowlevelil import (  # type: ignore
     LowLevelILOperation,
 )
 
-from .android.compat import log_debug, log_error, log_warn
+from .android.compat import log_error, log_warn
 from .android.dex import DexFile, FileOffset
 from .android.smali import (
-    SmaliFillArrayDataPayload,
     SmaliPackedSwitchPayload,
-    SmaliSparseSwitchPayload,
     disassemble,
     endian_swap_shorts,
     load_insns,
@@ -95,8 +92,8 @@ class Smali(Architecture):  # type: ignore
             offset = sign(args["A"], insn_info.fmt.format_.count("A"))
             ii.add_branch(BranchType.UnconditionalBranch, target=addr + offset * 2)
         elif (
-            insn_info.mnemonic == "packed-switch"
-            or insn_info.mnemonic == "sparse-switch"
+                insn_info.mnemonic == "packed-switch"
+                or insn_info.mnemonic == "sparse-switch"
         ):
             data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
             args = parse_with_format(data_to_parse, insn_info.fmt.format_)
@@ -134,13 +131,13 @@ class Smali(Architecture):  # type: ignore
         return ii
 
     def get_instruction_text(
-        self, data: bytes, addr: FileOffset
+            self, data: bytes, addr: FileOffset
     ) -> Tuple[List[InstructionTextToken], int]:
         self.load_dex()
         return disassemble(self.df, data, addr)
 
     def get_instruction_low_level_il(
-        self, data: bytes, addr: FileOffset, il: LowLevelILFunction
+            self, data: bytes, addr: FileOffset, il: LowLevelILFunction
     ) -> int:
         self.load_dex()
         insn_info = self.insns[data[0]]
