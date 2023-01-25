@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 import dataclasses
-import unittest
-from binascii import unhexlify
 from enum import IntEnum, IntFlag
 from struct import pack, unpack
 from typing import Any, Dict, List, NewType, Optional, Tuple, Union, cast
 
 from .smali import (
     PseudoInstructions,
-    SmaliFillArrayDataPayload,
-    SmaliPackedSwitchPayload,
-    SmaliSparseSwitchPayload,
     disassemble_pseudoinstructions,
 )
 
@@ -61,81 +56,6 @@ def parse_uleb128p1(data: bytes) -> Tuple[int, int]:
     return val - 1, i + 1
 
 
-class TestLeb128(unittest.TestCase):
-    def test_example1(self) -> None:
-        """First example from https://source.android.com/devices/tech/dalvik/dex-format.html#leb128"""
-        data = b"\x00XXXXX"
-        self.assertEqual(parse_sleb128(data), (0, 1))
-        self.assertEqual(parse_uleb128(data), (0, 1))
-        self.assertEqual(parse_uleb128p1(data), (-1, 1))
-
-    def test_example2(self) -> None:
-        """Second example from https://source.android.com/devices/tech/dalvik/dex-format.html#leb128"""
-        data = b"\x01XXXXX"
-        self.assertEqual(parse_sleb128(data), (1, 1))
-        self.assertEqual(parse_uleb128(data), (1, 1))
-        self.assertEqual(parse_uleb128p1(data), (0, 1))
-
-    def test_example3(self) -> None:
-        """Third example from https://source.android.com/devices/tech/dalvik/dex-format.html#leb128"""
-        data = b"\x7fXXXXX"
-        self.assertEqual(parse_sleb128(data), (-1, 1))
-        self.assertEqual(parse_uleb128(data), (127, 1))
-        self.assertEqual(parse_uleb128p1(data), (126, 1))
-
-    def test_example4(self) -> None:
-        """Fourth example from https://source.android.com/devices/tech/dalvik/dex-format.html#leb128"""
-        data = b"\x80\x7fXXXXX"
-        self.assertEqual(parse_sleb128(data), (-128, 2))
-        self.assertEqual(parse_uleb128(data), (16256, 2))
-        self.assertEqual(parse_uleb128p1(data), (16255, 2))
-
-    def test_5byte(self) -> None:
-        data = b"\xff\xff\xff\xff\x0fXXXXX"
-        self.assertEqual(parse_sleb128(data), (0xFFFFFFFF, 5))
-        self.assertEqual(parse_uleb128(data), (0xFFFFFFFF, 5))
-        self.assertEqual(parse_uleb128p1(data), (0xFFFFFFFE, 5))
-
-    def test_wikipedia_signed(self) -> None:
-        """Signed example from https://en.wikipedia.org/wiki/LEB128"""
-        data = b"\x9b\xf1\x59XXXXX"
-        self.assertEqual(parse_sleb128(data), (-624485, 3))
-
-    def test_wikipedia_unsigned(self) -> None:
-        """Unsigned example from https://en.wikipedia.org/wiki/LEB128"""
-        data = b"\xe5\x8e\x26XXXXX"
-        self.assertEqual(parse_uleb128(data), (624485, 3))
-
-    def test_gas_signed(self) -> None:
-        """Signed examples from binutils gas
-        https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;a=blob;f=gas/testsuite/gas/all/sleb128.s;h=e8997ca175d4fcf05374cd45a62ccbc4630c3d1a;hb=refs/heads/master
-        https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;a=blob;f=gas/testsuite/gas/all/sleb128.d;h=993921ef5be6d8d605c61a3799225a8e3770adcd;hb=refs/heads/master
-
-        The Dex format specifies that all *LEB128 values are 32-bit and <=5
-        bytes, but might as well over-test.
-        """
-        tests = {
-            "90e4d0b207": (0x76543210, 5),
-            "8080808008": (0x80000000, 5),
-            "a18695bb08": (0x87654321, 5),
-            "ffffffff0f": (0xFFFFFFFF, 5),
-            "f09bafcd78": (-0x76543210, 5),
-            "8080808078": (-0x80000000, 5),
-            "dff9eac477": (-0x87654321, 5),
-            "8180808070": (-0xFFFFFFFF, 5),
-            "ef9bafcdf8acd19101": (0x123456789ABCDEF, 9),
-            "91e4d0b287d3aeee7e": (-0x123456789ABCDEF, 9),
-            "81808080808060": (-0x7FFFFFFFFFFF, 7),
-            "80808080808060": (-0x800000000000, 7),
-            "8180808080808080807f": (-0x7FFFFFFFFFFFFFFF, 10),
-            "8080808080808080807f": (-0x8000000000000000, 10),
-            "8080808070": (-0x100000000, 5),
-            "80808080808040": (-0x1000000000000, 7),
-        }
-        for data in tests:
-            self.assertEqual(parse_sleb128(unhexlify(data)), tests[data])
-
-
 #
 # MUTF-8
 #
@@ -151,7 +71,7 @@ def parse_mutf8(data: bytes) -> Tuple[str, int]:
         if data[i] & 0x80:
             if data[i] & 0x20:
                 # 3 bytes
-                code_point = ord(data[i : i + 3].decode("utf-8", "surrogatepass"))
+                code_point = ord(data[i: i + 3].decode("utf-8", "surrogatepass"))
                 if part_of_surrogate_pair:
                     # Second part of pair
                     # Use little-endian encoding for python
@@ -169,10 +89,10 @@ def parse_mutf8(data: bytes) -> Tuple[str, int]:
                 i += 3
             else:
                 # 2 bytes
-                if data[i : i + 2] == b"\xc0\x80":
+                if data[i: i + 2] == b"\xc0\x80":
                     chars.append("\x00")
                 else:
-                    chars.append(data[i : i + 2].decode("utf-8"))
+                    chars.append(data[i: i + 2].decode("utf-8"))
                 i += 2
         else:
             # single byte
@@ -181,42 +101,6 @@ def parse_mutf8(data: bytes) -> Tuple[str, int]:
     if part_of_surrogate_pair:
         chars.append(pack("<H", surrogate_first).decode("utf-16", "surrogatepass"))
     return "".join(chars), i + 1
-
-
-class TestMutf8(unittest.TestCase):
-    def test_empty_string(self) -> None:
-        self.assertEqual(parse_mutf8(b"\x00AAAAA"), ("", 1))
-
-    def test_null_byte(self) -> None:
-        self.assertEqual(parse_mutf8(b"\xc0\x80\x00"), ("\x00", 3))
-
-    def test_one_byte_chars(self) -> None:
-        self.assertEqual(parse_mutf8(b"A\x00"), ("A", 2))
-        self.assertEqual(parse_mutf8(b"\x01\x00"), ("\x01", 2))
-        self.assertEqual(parse_mutf8(b" \x00"), (" ", 2))
-        self.assertEqual(parse_mutf8(b"\x7e\x00"), ("~", 2))
-        self.assertEqual(parse_mutf8(b"hello\x00"), ("hello", 6))
-
-    def test_two_byte_chars(self) -> None:
-        self.assertEqual(parse_mutf8(b"\xc2\xa2\x00"), ("¢", 3))
-        self.assertEqual(parse_mutf8(b"\xc3\x98\x00"), ("Ø", 3))
-        self.assertEqual(parse_mutf8(b"\xc3\xa6\x00"), ("æ", 3))
-        self.assertEqual(parse_mutf8(b"\xcf\x84\x00"), ("τ", 3))
-        self.assertEqual(parse_mutf8(b"\xc2\xa0\x00"), ("\xa0", 3))
-        self.assertEqual(parse_mutf8(b"\xdf\xbf\x00"), ("\u07ff", 3))
-
-    def test_three_byte_chars(self) -> None:
-        self.assertEqual(parse_mutf8(b"\xe0\xa4\xb9\x00"), ("\u0939", 4))
-        self.assertEqual(parse_mutf8(b"\xe2\x82\xac\x00"), ("€", 4))
-        self.assertEqual(parse_mutf8(b"\xe3\x81\x82\x00"), ("あ", 4))
-
-    def test_surrogate_singleton(self) -> None:
-        self.assertEqual(parse_mutf8(b"\xed\xa0\x80\x00"), ("\ud800", 4))
-
-    def test_six_byte_chars(self) -> None:
-        self.assertEqual(
-            parse_mutf8(b"\xed\xae\x80\xed\xb0\x80\x00"), ("\U000f0000", 7)
-        )
 
 
 #
@@ -415,104 +299,6 @@ class AccessFlag:
         return " ".join(res) + " "
 
 
-class TestAccessFlag(unittest.TestCase):
-    def test_none(self) -> None:
-        """No modifiers."""
-        self.assertEqual(str(AccessFlag(0, "class")), "")
-        self.assertEqual(str(AccessFlag(0, "method")), "")
-        self.assertEqual(str(AccessFlag(0, "field")), "")
-
-    def test_single(self) -> None:
-        """Single modifier."""
-        self.assertEqual(str(AccessFlag(AccessFlagEnum.ACC_PUBLIC, "class")), "public ")
-
-    def test_sorted(self) -> None:
-        """Cases with specified orders."""
-        self.assertEqual(
-            str(
-                AccessFlag(
-                    AccessFlagEnum.ACC_PUBLIC | AccessFlagEnum.ACC_STATIC, "method"
-                )
-            ),
-            "public static ",
-        )
-        self.assertEqual(
-            str(
-                AccessFlag(
-                    AccessFlagEnum.ACC_PUBLIC
-                    | AccessFlagEnum.ACC_PRIVATE
-                    | AccessFlagEnum.ACC_PROTECTED
-                    | AccessFlagEnum.ACC_STATIC
-                    | AccessFlagEnum.ACC_FINAL
-                    | AccessFlagEnum.ACC_SYNCHRONIZED
-                    | AccessFlagEnum.ACC_VOLATILE
-                    | AccessFlagEnum.ACC_TRANSIENT
-                    | AccessFlagEnum.ACC_NATIVE
-                    | AccessFlagEnum.ACC_INTERFACE
-                    | AccessFlagEnum.ACC_ABSTRACT
-                    | AccessFlagEnum.ACC_STRICT
-                    | AccessFlagEnum.ACC_SYNTHETIC
-                    | AccessFlagEnum.ACC_ANNOTATION
-                    | AccessFlagEnum.ACC_ENUM
-                    | AccessFlagEnum.ACC_CONSTRUCTOR
-                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
-                    "method",
-                )
-            ),
-            "public private protected static final synchronized bridge varargs native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
-        )
-        self.assertEqual(
-            str(
-                AccessFlag(
-                    AccessFlagEnum.ACC_PUBLIC
-                    | AccessFlagEnum.ACC_PRIVATE
-                    | AccessFlagEnum.ACC_PROTECTED
-                    | AccessFlagEnum.ACC_STATIC
-                    | AccessFlagEnum.ACC_FINAL
-                    | AccessFlagEnum.ACC_SYNCHRONIZED
-                    | AccessFlagEnum.ACC_VOLATILE
-                    | AccessFlagEnum.ACC_TRANSIENT
-                    | AccessFlagEnum.ACC_NATIVE
-                    | AccessFlagEnum.ACC_INTERFACE
-                    | AccessFlagEnum.ACC_ABSTRACT
-                    | AccessFlagEnum.ACC_STRICT
-                    | AccessFlagEnum.ACC_SYNTHETIC
-                    | AccessFlagEnum.ACC_ANNOTATION
-                    | AccessFlagEnum.ACC_ENUM
-                    | AccessFlagEnum.ACC_CONSTRUCTOR
-                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
-                    "field",
-                )
-            ),
-            "public private protected static final synchronized volatile transient native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
-        )
-        self.assertEqual(
-            str(
-                AccessFlag(
-                    AccessFlagEnum.ACC_PUBLIC
-                    | AccessFlagEnum.ACC_PRIVATE
-                    | AccessFlagEnum.ACC_PROTECTED
-                    | AccessFlagEnum.ACC_STATIC
-                    | AccessFlagEnum.ACC_FINAL
-                    | AccessFlagEnum.ACC_SYNCHRONIZED
-                    | AccessFlagEnum.ACC_VOLATILE
-                    | AccessFlagEnum.ACC_TRANSIENT
-                    | AccessFlagEnum.ACC_NATIVE
-                    | AccessFlagEnum.ACC_INTERFACE
-                    | AccessFlagEnum.ACC_ABSTRACT
-                    | AccessFlagEnum.ACC_STRICT
-                    | AccessFlagEnum.ACC_SYNTHETIC
-                    | AccessFlagEnum.ACC_ANNOTATION
-                    | AccessFlagEnum.ACC_ENUM
-                    | AccessFlagEnum.ACC_CONSTRUCTOR
-                    | AccessFlagEnum.ACC_DECLARED_SYNCHRONIZED,
-                    "class",
-                )
-            ),
-            "public private protected static final super volatile transient native interface abstract strictfp synthetic annotation enum constructor declared_synchronized ",
-        )
-
-
 class ValueType(IntEnum):
     """Dex encoded_value type codes
 
@@ -592,9 +378,9 @@ class DexValue:
         elif self.type_ == ValueType.VALUE_ANNOTATION:
             # TODO annotations
             return (
-                ".subannotation <type>\n"
-                # + ",".join([f"\n    something = something" for x in self.something])
-                + ".end subannotation"
+                    ".subannotation <type>\n"
+                    # + ",".join([f"\n    something = something" for x in self.something])
+                    + ".end subannotation"
             )
         elif self.type_ == ValueType.VALUE_NULL:
             return "null"
@@ -776,7 +562,7 @@ class DexFile(object):
             )
 
         map_off = self._parse_uint(data[52:56])
-        map_size = self._parse_uint(data[map_off : map_off + 4])
+        map_size = self._parse_uint(data[map_off: map_off + 4])
 
         # Parse map list items. First we collect them all, and then we parse
         # them in an order that satisfies dependency relationships. For
@@ -786,9 +572,9 @@ class DexFile(object):
         # before type_lists, so we can't just go in order.
         map_list = dict()
         for i in range(map_off + 4, 4 + map_off + map_size * 12, 12):
-            item_type = self._parse_ushort(data[i : i + 2])
-            item_size = self._parse_uint(data[i + 4 : i + 8])
-            item_offset = cast(FileOffset, self._parse_uint(data[i + 8 : i + 12]))
+            item_type = self._parse_ushort(data[i: i + 2])
+            item_size = self._parse_uint(data[i + 4: i + 8])
+            item_offset = cast(FileOffset, self._parse_uint(data[i + 8: i + 12]))
             # log_debug(f'found type: "{item_type}", "{MapType(item_type).name}"')
             map_list[item_type] = MapListItem(size=item_size, offset=item_offset)
 
@@ -800,7 +586,7 @@ class DexFile(object):
         # string_ids and strings
         mi = map_list.pop(MapType.TYPE_STRING_ID_ITEM)
         self.parse_string_ids(
-            data[mi.offset : mi.offset + 4 * mi.size], mi.size, mi.offset
+            data[mi.offset: mi.offset + 4 * mi.size], mi.size, mi.offset
         )
         self.make_strings(data)
         del self.string_ids
@@ -809,11 +595,11 @@ class DexFile(object):
         # Then, type_ids and type_lists
         mi = map_list.pop(MapType.TYPE_TYPE_ID_ITEM)
         self.parse_type_ids(
-            data[mi.offset : mi.offset + 4 * mi.size], mi.size, mi.offset
+            data[mi.offset: mi.offset + 4 * mi.size], mi.size, mi.offset
         )
         try:
             mi = map_list.pop(MapType.TYPE_TYPE_LIST)
-            self.parse_type_lists(data[mi.offset :], mi.size, mi.offset)
+            self.parse_type_lists(data[mi.offset:], mi.size, mi.offset)
         except KeyError:
             log_warn("No type list section")
 
@@ -821,27 +607,27 @@ class DexFile(object):
         # ids before class data before class definitions
         mi = map_list.pop(MapType.TYPE_PROTO_ID_ITEM)
         self.parse_proto_ids(
-            data[mi.offset : mi.offset + 12 * mi.size], mi.size, mi.offset
+            data[mi.offset: mi.offset + 12 * mi.size], mi.size, mi.offset
         )
         mi = map_list.pop(MapType.TYPE_METHOD_ID_ITEM)
-        self.parse_method_ids(data[mi.offset :], mi.size, mi.offset)
+        self.parse_method_ids(data[mi.offset:], mi.size, mi.offset)
         try:
             mi = map_list.pop(MapType.TYPE_FIELD_ID_ITEM)
             self.parse_field_ids(
-                data[mi.offset : mi.offset + 8 * mi.size], mi.size, mi.offset
+                data[mi.offset: mi.offset + 8 * mi.size], mi.size, mi.offset
             )
         except KeyError:
             log_warn("No field id section.")
         mi = map_list.pop(MapType.TYPE_CODE_ITEM)
-        self.parse_code_items(data[mi.offset :], mi.size, mi.offset)
+        self.parse_code_items(data[mi.offset:], mi.size, mi.offset)
         mi = map_list.pop(MapType.TYPE_CLASS_DATA_ITEM)
-        self.parse_class_data(data[mi.offset :], mi.size, mi.offset)
+        self.parse_class_data(data[mi.offset:], mi.size, mi.offset)
         del self.code_items
 
         # Need encoded_array_items before class_defs
         try:
             mi = map_list.pop(MapType.TYPE_ENCODED_ARRAY_ITEM)
-            self.parse_encoded_array_items(data[mi.offset :], mi.size, mi.offset)
+            self.parse_encoded_array_items(data[mi.offset:], mi.size, mi.offset)
         except KeyError:
             log_warn("No encoded array section.")
         del self.proto_ids
@@ -849,7 +635,7 @@ class DexFile(object):
         # Rest are in order of MapType constant
         mi = map_list.pop(MapType.TYPE_CLASS_DEF_ITEM)
         self.parse_class_defs(
-            data[mi.offset : mi.offset + 32 * mi.size], mi.size, mi.offset
+            data[mi.offset: mi.offset + 32 * mi.size], mi.size, mi.offset
         )
         try:
             del self.type_lists
@@ -860,7 +646,7 @@ class DexFile(object):
         try:
             mi = map_list.pop(MapType.TYPE_CALL_SITE_ID_ITEM)
             self.parse_call_site_ids(
-                data[mi.offset : mi.offset + 4 * mi.size], mi.size, mi.offset
+                data[mi.offset: mi.offset + 4 * mi.size], mi.size, mi.offset
             )
         except KeyError:
             log_warn("No calls")
@@ -868,7 +654,7 @@ class DexFile(object):
         try:
             mi = map_list.pop(MapType.TYPE_METHOD_HANDLE_ITEM)
             self.parse_method_handles(
-                data[mi.offset : mi.offset + 8 * mi.size], mi.size, mi.offset
+                data[mi.offset: mi.offset + 8 * mi.size], mi.size, mi.offset
             )
         except KeyError:
             log_warn("No methods")
@@ -897,28 +683,28 @@ class DexFile(object):
             log_error(f"unknown type {hex(item_type)}")
 
     def parse_string_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.string_ids = [
-            self._parse_uint(data[i : i + 4])
+            self._parse_uint(data[i: i + 4])
             for i in range(i_offset, size * 4 + i_offset, 4)
         ]
 
     def make_strings(self, data: bytes) -> None:
         self.strings: List[str] = list()
         for string_data_off in self.string_ids:
-            utf16_size, off = parse_uleb128(data[string_data_off : string_data_off + 5])
+            utf16_size, off = parse_uleb128(data[string_data_off: string_data_off + 5])
             try:
-                string, string_size_off = parse_mutf8(data[string_data_off + off :])
+                string, string_size_off = parse_mutf8(data[string_data_off + off:])
             except UnicodeDecodeError:
                 # This should never be reached
                 t = data[
                     string_data_off
-                    + off : string_data_off
-                    + off
-                    + data[string_data_off + off :].index(b"\x00")
-                ]
+                    + off: string_data_off
+                           + off
+                           + data[string_data_off + off:].index(b"\x00")
+                    ]
                 log_error(f"Failed to decode MUTF8: {t!r}")
                 raise
             self.strings.append(string)
@@ -930,26 +716,26 @@ class DexFile(object):
                 )
 
     def parse_type_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.type_ids: List[DexType] = [
-            DexType(self.strings[self._parse_uint(data[i : i + 4])])
+            DexType(self.strings[self._parse_uint(data[i: i + 4])])
             for i in range(i_offset, size * 4 + i_offset, 4)
         ]
 
     def parse_proto_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.proto_ids: List[DexProtoId] = [
             DexProtoId(
-                shorty=self.strings[self._parse_uint(data[i : i + 4])],
-                return_type=self.type_ids[self._parse_uint(data[i + 4 : i + 8])],
+                shorty=self.strings[self._parse_uint(data[i: i + 4])],
+                return_type=self.type_ids[self._parse_uint(data[i + 4: i + 8])],
                 parameters=self.type_lists[
-                    cast(FileOffset, self._parse_uint(data[i + 8 : i + 12]))
+                    cast(FileOffset, self._parse_uint(data[i + 8: i + 12]))
                 ]
-                if self._parse_uint(data[i + 8 : i + 12])
+                if self._parse_uint(data[i + 8: i + 12])
                 else list(),
             )
             for i in range(i_offset, size * 12 + i_offset, 12)
@@ -959,61 +745,61 @@ class DexFile(object):
                 log_error("Shorty does not match parameters")
 
     def parse_field_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.field_ids = [
             DexFieldId(
-                class_=self.type_ids[self._parse_ushort(data[i : i + 2])],
-                type_=self.type_ids[self._parse_ushort(data[i + 2 : i + 4])],
-                name=self.strings[self._parse_uint(data[i + 4 : i + 8])],
+                class_=self.type_ids[self._parse_ushort(data[i: i + 2])],
+                type_=self.type_ids[self._parse_ushort(data[i + 2: i + 4])],
+                name=self.strings[self._parse_uint(data[i + 4: i + 8])],
             )
             for i in range(i_offset, i_offset + size * 8, 8)
         ]
 
     def parse_method_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.method_ids = [
             DexMethodId(
-                class_=self.type_ids[self._parse_ushort(data[i : i + 2])],
-                proto=self.proto_ids[self._parse_ushort(data[i + 2 : i + 4])],
-                name=self.strings[self._parse_uint(data[i + 4 : i + 8])],
+                class_=self.type_ids[self._parse_ushort(data[i: i + 2])],
+                proto=self.proto_ids[self._parse_ushort(data[i + 2: i + 4])],
+                name=self.strings[self._parse_uint(data[i + 4: i + 8])],
             )
             for i in range(i_offset, size * 8 + i_offset, 8)
         ]
 
     def parse_class_defs(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.class_defs = list()
         for i in range(i_offset, size * 32 + i_offset, 32):
             cdef = DexClassDef(
-                class_type=self.type_ids[self._parse_uint(data[i : i + 4])],
-                access_flags=AccessFlag(self._parse_uint(data[i + 4 : i + 8]), "class"),
-                superclass=self.type_ids[self._parse_uint(data[i + 8 : i + 12])]
-                if self._parse_uint(data[i + 8 : i + 12]) != NO_INDEX
+                class_type=self.type_ids[self._parse_uint(data[i: i + 4])],
+                access_flags=AccessFlag(self._parse_uint(data[i + 4: i + 8]), "class"),
+                superclass=self.type_ids[self._parse_uint(data[i + 8: i + 12])]
+                if self._parse_uint(data[i + 8: i + 12]) != NO_INDEX
                 else None,
                 interfaces=self.type_lists[
-                    cast(FileOffset, self._parse_uint(data[i + 12 : i + 16]))
+                    cast(FileOffset, self._parse_uint(data[i + 12: i + 16]))
                 ]
-                if self._parse_uint(data[i + 12 : i + 16]) != 0
+                if self._parse_uint(data[i + 12: i + 16]) != 0
                 else None,
-                source_file=self.strings[self._parse_uint(data[i + 16 : i + 20])]
-                if self._parse_uint(data[i + 16 : i + 20]) != NO_INDEX
+                source_file=self.strings[self._parse_uint(data[i + 16: i + 20])]
+                if self._parse_uint(data[i + 16: i + 20]) != NO_INDEX
                 else None,
-                annotations=cast(FileOffset, self._parse_uint(data[i + 20 : i + 24])),
+                annotations=cast(FileOffset, self._parse_uint(data[i + 20: i + 24])),
                 class_data=self.class_data_items[
-                    self._parse_uint(data[i + 24 : i + 28])
+                    self._parse_uint(data[i + 24: i + 28])
                 ]
-                if self._parse_uint(data[i + 24 : i + 28]) != 0
+                if self._parse_uint(data[i + 24: i + 28]) != 0
                 else None,
                 static_values=self.encoded_arrays[
-                    self._parse_uint(data[i + 28 : i + 32])
+                    self._parse_uint(data[i + 28: i + 32])
                 ]
-                if self._parse_uint(data[i + 28 : i + 32])
+                if self._parse_uint(data[i + 28: i + 32])
                 else list(),
             )
             # Right now static_values is truncated like it is in the dex file.
@@ -1027,20 +813,20 @@ class DexFile(object):
             self.class_defs.append(cdef)
 
     def parse_call_site_ids(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.call_site_ids = [
-            self._parse_uint(data[i : i + 4]) for i in range(0, size * 4, 4)
+            self._parse_uint(data[i: i + 4]) for i in range(0, size * 4, 4)
         ]
 
     def parse_method_handles(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         i_offset = (4 - (offset_to_section)) % 4
         self.method_handles: List[DexMethodHandle] = list()
         for i in range(i_offset, size * 8 + i_offset, 8):
-            method_handle_type = MethodHandleType(self._parse_ushort(data[i : i + 2]))
-            id_ = self._parse_ushort(data[i + 2 : i + 4])
+            method_handle_type = MethodHandleType(self._parse_ushort(data[i: i + 2]))
+            id_ = self._parse_ushort(data[i + 2: i + 4])
             self.method_handles.append(
                 DexMethodHandle(
                     type_=method_handle_type,
@@ -1051,29 +837,29 @@ class DexFile(object):
             )
 
     def parse_type_lists(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.type_lists: Dict[FileOffset, List[DexType]] = dict()
         i = 0
         for num in range(size):
             i += (4 - (i + offset_to_section)) % 4
-            type_list_size = self._parse_uint(data[i : i + 4])
+            type_list_size = self._parse_uint(data[i: i + 4])
             self.type_lists[cast(FileOffset, offset_to_section + i)] = [
-                self.type_ids[self._parse_ushort(data[j : j + 2])]
+                self.type_ids[self._parse_ushort(data[j: j + 2])]
                 for j in range(i + 4, i + 4 + type_list_size * 2, 2)
             ]
             i += 4 + type_list_size * 2
 
     def _parse_encoded_fields(
-        self, data: bytes, size: int
+            self, data: bytes, size: int
     ) -> Tuple[List[DexEncodedField], int]:
         fields = list()
         i = 0
         field_idx = 0
         for num in range(size):
-            field_idx_diff, off1 = parse_uleb128(data[i : i + 5])
+            field_idx_diff, off1 = parse_uleb128(data[i: i + 5])
             field_idx += field_idx_diff
-            access_flags, off2 = parse_uleb128(data[i + off1 : i + off1 + 5])
+            access_flags, off2 = parse_uleb128(data[i + off1: i + off1 + 5])
             fields.append(
                 DexEncodedField(
                     self.field_ids[field_idx], AccessFlag(access_flags, "field")
@@ -1083,18 +869,18 @@ class DexFile(object):
         return fields, i
 
     def _parse_encoded_methods(
-        self, data: bytes, size: int
+            self, data: bytes, size: int
     ) -> Tuple[List[DexEncodedMethod], int]:
         methods = list()
         i = 0
         method_idx = 0
         for num in range(size):
-            method_idx_diff, off1 = parse_uleb128(data[i : i + 5])
+            method_idx_diff, off1 = parse_uleb128(data[i: i + 5])
             method_idx += method_idx_diff
-            access_flags, off2 = parse_uleb128(data[i + off1 : i + off1 + 5])
+            access_flags, off2 = parse_uleb128(data[i + off1: i + off1 + 5])
             code_off, off3 = cast(
                 Tuple[FileOffset, int],
-                parse_uleb128(data[i + off1 + off2 : i + off1 + off2 + 5]),
+                parse_uleb128(data[i + off1 + off2: i + off1 + off2 + 5]),
             )
             method = self.method_ids[method_idx]
             if method._insns_off is not None and method._insns_off != code_off + 16:
@@ -1114,19 +900,19 @@ class DexFile(object):
         return methods, i
 
     def parse_class_data(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.class_data_items: Dict[int, DexClassData] = dict()
         i = 0
         for num in range(size):
             class_data_off = offset_to_section + i
-            static_fields_size, off = parse_uleb128(data[i : i + 5])
+            static_fields_size, off = parse_uleb128(data[i: i + 5])
             i += off
-            instance_fields_size, off = parse_uleb128(data[i : i + 5])
+            instance_fields_size, off = parse_uleb128(data[i: i + 5])
             i += off
-            direct_methods_size, off = parse_uleb128(data[i : i + 5])
+            direct_methods_size, off = parse_uleb128(data[i: i + 5])
             i += off
-            virtual_methods_size, off = parse_uleb128(data[i : i + 5])
+            virtual_methods_size, off = parse_uleb128(data[i: i + 5])
             i += off
             static_fields: List[DexEncodedField] = list()
             instance_fields: List[DexEncodedField] = list()
@@ -1134,22 +920,22 @@ class DexFile(object):
             virtual_methods: List[DexEncodedMethod] = list()
             if static_fields_size:
                 static_fields, off = self._parse_encoded_fields(
-                    data[i : i + 5 * 2 * static_fields_size], static_fields_size
+                    data[i: i + 5 * 2 * static_fields_size], static_fields_size
                 )
                 i += off
             if instance_fields_size:
                 instance_fields, off = self._parse_encoded_fields(
-                    data[i : i + 5 * 2 * instance_fields_size], instance_fields_size
+                    data[i: i + 5 * 2 * instance_fields_size], instance_fields_size
                 )
                 i += off
             if direct_methods_size:
                 direct_methods, off = self._parse_encoded_methods(
-                    data[i : i + 5 * 3 * direct_methods_size], direct_methods_size
+                    data[i: i + 5 * 3 * direct_methods_size], direct_methods_size
                 )
                 i += off
             if virtual_methods_size:
                 virtual_methods, off = self._parse_encoded_methods(
-                    data[i : i + 5 * 3 * virtual_methods_size], virtual_methods_size
+                    data[i: i + 5 * 3 * virtual_methods_size], virtual_methods_size
                 )
                 i += off
             self.class_data_items[class_data_off] = DexClassData(
@@ -1157,27 +943,27 @@ class DexFile(object):
             )
 
     def parse_code_items(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.code_items: Dict[FileOffset, DexCodeItem] = dict()
         self.pseudoinstructions: PseudoInstructions = cast(PseudoInstructions, dict())
         i = 0
         for num in range(size):
             code_item_off: FileOffset = cast(FileOffset, offset_to_section + i)
-            insns_size_ = self._parse_uint(data[i + 12 : i + 16])
+            insns_size_ = self._parse_uint(data[i + 12: i + 16])
             code_item = DexCodeItem(
-                registers_size=self._parse_ushort(data[i : i + 2]),
-                ins_size=self._parse_ushort(data[i + 2 : i + 4]),
-                outs_size=self._parse_ushort(data[i + 4 : i + 6]),
-                tries_size=self._parse_ushort(data[i + 6 : i + 8]),
+                registers_size=self._parse_ushort(data[i: i + 2]),
+                ins_size=self._parse_ushort(data[i + 2: i + 4]),
+                outs_size=self._parse_ushort(data[i + 4: i + 6]),
+                tries_size=self._parse_ushort(data[i + 6: i + 8]),
                 debug_info=cast(
-                    FileOffset, self._parse_uint(data[i + 8 : i + 12])
+                    FileOffset, self._parse_uint(data[i + 8: i + 12])
                 ),  # TODO debug_info_item offset
                 insns_size=insns_size_,
                 # insns is stored as an array of endian-sensitive shorts
                 insns=b"".join(
                     [
-                        pack(">H", self._parse_ushort(data[j : j + 2]))
+                        pack(">H", self._parse_ushort(data[j: j + 2]))
                         for j in range(i + 16, i + 16 + insns_size_ * 2, 2)
                     ]
                 ),
@@ -1186,11 +972,11 @@ class DexFile(object):
             )
 
             i += (
-                16
-                + 2 * code_item.insns_size
-                # "two bytes of padding... only present if tries_size is
-                # non-zero and insns_size is odd."
-                + 2 * (code_item.tries_size and (code_item.insns_size % 2))
+                    16
+                    + 2 * code_item.insns_size
+                    # "two bytes of padding... only present if tries_size is
+                    # non-zero and insns_size is odd."
+                    + 2 * (code_item.tries_size and (code_item.insns_size % 2))
             )
 
             # This part is very confusing, sorry
@@ -1202,24 +988,24 @@ class DexFile(object):
 
                 # Parse handlers
                 encoded_catch_handler_list_off = i
-                encoded_catch_handler_list_size, off = parse_uleb128(data[i : i + 5])
+                encoded_catch_handler_list_size, off = parse_uleb128(data[i: i + 5])
                 i += off
                 handler_list = dict()
                 for num2 in range(encoded_catch_handler_list_size):
                     encoded_handler_off = i - encoded_catch_handler_list_off
-                    encoded_catch_handler_size, off = parse_sleb128(data[i : i + 5])
+                    encoded_catch_handler_size, off = parse_sleb128(data[i: i + 5])
                     i += off
                     handlers = list()
                     for num3 in range(abs(encoded_catch_handler_size)):
-                        type_idx, off = parse_uleb128(data[i : i + 5])
+                        type_idx, off = parse_uleb128(data[i: i + 5])
                         i += off
-                        addr, off = parse_uleb128(data[i : i + 5])
+                        addr, off = parse_uleb128(data[i: i + 5])
                         i += off
                         handlers.append((self.type_ids[type_idx], addr))
 
                     if encoded_catch_handler_size <= 0:
                         catch_all_addr, off = cast(
-                            Tuple[BytecodeAddress, int], parse_uleb128(data[i : i + 5])
+                            Tuple[BytecodeAddress, int], parse_uleb128(data[i: i + 5])
                         )
                         i += off
                         encoded_handler = DexEncodedCatchHandler(
@@ -1239,13 +1025,13 @@ class DexFile(object):
                         DexTryItem(
                             start_addr=cast(
                                 BytecodeAddress,
-                                self._parse_uint(data[tries_off : tries_off + 4]),
+                                self._parse_uint(data[tries_off: tries_off + 4]),
                             ),
                             insn_count=self._parse_ushort(
-                                data[tries_off + 4 : tries_off + 6]
+                                data[tries_off + 4: tries_off + 6]
                             ),
                             handler=handler_list[
-                                self._parse_ushort(data[tries_off + 6 : tries_off + 8])
+                                self._parse_ushort(data[tries_off + 6: tries_off + 8])
                             ],
                         )
                     )
@@ -1273,11 +1059,11 @@ class DexFile(object):
             return data + b"\x00" * (size - len(data))
 
         def _make_res(
-            value_type: ValueType,
-            value_arg: int,
-            struct_type: str,
-            data: bytes,
-            lookup: Optional[List[Any]] = None,
+                value_type: ValueType,
+                value_arg: int,
+                struct_type: str,
+                data: bytes,
+                lookup: Optional[List[Any]] = None,
         ) -> Tuple[DexValue, int]:
             if lookup is not None:
                 return (
@@ -1301,40 +1087,40 @@ class DexFile(object):
             return _make_res(value_type, value_arg, "b", data[1:2])
         elif value_type == ValueType.VALUE_SHORT:
             return _make_res(
-                value_type, value_arg, "h", _sign_extend(data[1 : value_arg + 2], 2)
+                value_type, value_arg, "h", _sign_extend(data[1: value_arg + 2], 2)
             )
         elif value_type == ValueType.VALUE_CHAR:
             return _make_res(
-                value_type, value_arg, "H", _zero_extend(data[1 : value_arg + 2], 2)
+                value_type, value_arg, "H", _zero_extend(data[1: value_arg + 2], 2)
             )
         elif value_type == ValueType.VALUE_INT:
             return _make_res(
-                value_type, value_arg, "i", _sign_extend(data[1 : value_arg + 2], 4)
+                value_type, value_arg, "i", _sign_extend(data[1: value_arg + 2], 4)
             )
         elif value_type == ValueType.VALUE_LONG:
             return _make_res(
-                value_type, value_arg, "q", _sign_extend(data[1 : value_arg + 2], 8)
+                value_type, value_arg, "q", _sign_extend(data[1: value_arg + 2], 8)
             )
         elif value_type == ValueType.VALUE_FLOAT:
             return _make_res(
                 value_type,
                 value_arg,
                 "f",
-                _zero_extend_right(data[1 : value_arg + 2], 4),
+                _zero_extend_right(data[1: value_arg + 2], 4),
             )
         elif value_type == ValueType.VALUE_DOUBLE:
             return _make_res(
                 value_type,
                 value_arg,
                 "d",
-                _zero_extend_right(data[1 : value_arg + 2], 8),
+                _zero_extend_right(data[1: value_arg + 2], 8),
             )
         elif value_type == ValueType.VALUE_METHOD_TYPE:
             return _make_res(
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.proto_ids,
             )
         elif value_type == ValueType.VALUE_METHOD_HANDLE:
@@ -1342,7 +1128,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.method_handles,
             )
         elif value_type == ValueType.VALUE_STRING:
@@ -1350,7 +1136,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.strings,
             )
         elif value_type == ValueType.VALUE_TYPE:
@@ -1358,7 +1144,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.type_ids,
             )
         elif value_type == ValueType.VALUE_FIELD:
@@ -1366,7 +1152,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.field_ids,
             )
         elif value_type == ValueType.VALUE_METHOD:
@@ -1374,7 +1160,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.method_ids,
             )
         elif value_type == ValueType.VALUE_ENUM:
@@ -1382,7 +1168,7 @@ class DexFile(object):
                 value_type,
                 value_arg,
                 "I",
-                _zero_extend(data[1 : value_arg + 2], 4),
+                _zero_extend(data[1: value_arg + 2], 4),
                 self.field_ids,
             )
 
@@ -1409,7 +1195,7 @@ class DexFile(object):
         return array, i
 
     def parse_encoded_array_items(
-        self, data: bytes, size: int, offset_to_section: FileOffset
+            self, data: bytes, size: int, offset_to_section: FileOffset
     ) -> None:
         self.encoded_arrays: Dict[int, DexEncodedArray] = dict()
         i = 0
@@ -1417,7 +1203,3 @@ class DexFile(object):
             array, off = self._parse_encoded_array(data[i:])
             self.encoded_arrays[offset_to_section + i] = array
             i += off
-
-
-if __name__ == "__main__":
-    unittest.main()

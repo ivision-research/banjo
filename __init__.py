@@ -6,7 +6,6 @@ from .binaryview import Dex
 Smali.register()
 Dex.register()
 
-
 from binaryninjaui import UIContextNotification, UIContext  # type: ignore
 from binaryninja.architecture import Architecture  # type: ignore
 

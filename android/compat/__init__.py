@@ -12,20 +12,25 @@ except ModuleNotFoundError:
     def log_debug(s: str) -> None:
         print(s)
 
+
     def log_error(s: str) -> None:
         print(s)
+
 
     def log_info(s: str) -> None:
         print(s)
 
+
     def log_warn(s: str) -> None:
         print(s)
+
 
     # When https://github.com/python/mypy/issues/1153 is fixed, these type
     # ignores should be removed
     class Endianness(enum.Enum):  # type: ignore
         BigEndian = enum.auto()
         LittleEndian = enum.auto()
+
 
     @dataclass
     class InstructionTextTokenType:  # type: ignore
@@ -48,6 +53,7 @@ except ModuleNotFoundError:
         # Floating point number
         FloatingPointToken = enum.auto
 
+
     @dataclass
     class InstructionTextToken:  # type: ignore
         token_type: InstructionTextTokenType
@@ -60,7 +66,6 @@ except ModuleNotFoundError:
         confidence: int = 255
         typeNames: List[Any] = field(default_factory=list)
         width: int = 0
-
 
 __all__ = [
     log_debug,

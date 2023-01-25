@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 from typing import TextIO
 
-from android.dex import DexClassDef, DexEncodedMethod, DexFile, FileOffset, ValueType
+from android.dex import DexClassDef, DexEncodedMethod, DexFile, FileOffset
 from android.smali import disassemble, endian_swap_shorts
 
 THROW = False
