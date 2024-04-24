@@ -574,7 +574,7 @@ def disassemble(
         return (
             [
                 InstructionTextToken(
-                    token_type=InstructionTextTokenType.InstructionToken, text=text
+                    type=InstructionTextTokenType.InstructionToken, text=text
                 )
             ],
             df.pseudoinstructions[addr]._total_size,

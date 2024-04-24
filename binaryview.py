@@ -163,16 +163,11 @@ class Dex(BinaryView):  # type: ignore
         background_parser.start()
         return True
 
-    # def perform_get_address_size(self):
-    #     return 2
+    def perform_get_address_size(self):
+        return 2
 
     def perform_is_executable(self) -> bool:
         return True
-
-    # TODO maybe set this? There is no entry point in this file format, but it
-    # could be set to the first function or something
-    # def perform_get_entry_point(self):
-    #     return self.CODE_OFFSET | 0
 
     def perform_get_default_endianness(self) -> Endianness:
         return Endianness.LittleEndian
