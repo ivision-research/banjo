@@ -47,7 +47,10 @@ def write_class(df: DexFile, pth: Path, cls: DexClassDef) -> None:
             f.write("\n# static fields\n")
             for i, sf in enumerate(cls.class_data.static_fields):
                 f.write(f".field {sf.access_flags}{sf.field.name}:{sf.field.type_}")
-                if i < len(cls.static_values) and cls.static_values[i].value is not None:
+                if (
+                    i < len(cls.static_values)
+                    and cls.static_values[i].value is not None
+                ):
                     # FIXME sometimes this prints out values (that are 0) when
                     # baksmali doesn't
                     f.write(f" = {cls.static_values[i].value_str}\n\n")

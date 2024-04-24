@@ -1,4 +1,5 @@
 """Architecture class for Binary Ninja plugin."""
+
 import time
 from typing import List, Tuple, cast
 

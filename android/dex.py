@@ -946,11 +946,13 @@ class DexFile(object):
             DexProtoId(
                 shorty=self.strings[self._parse_uint(data[i : i + 4])],
                 return_type=self.type_ids[self._parse_uint(data[i + 4 : i + 8])],
-                parameters=self.type_lists[
-                    cast(FileOffset, self._parse_uint(data[i + 8 : i + 12]))
-                ]
-                if self._parse_uint(data[i + 8 : i + 12])
-                else list(),
+                parameters=(
+                    self.type_lists[
+                        cast(FileOffset, self._parse_uint(data[i + 8 : i + 12]))
+                    ]
+                    if self._parse_uint(data[i + 8 : i + 12])
+                    else list()
+                ),
             )
             for i in range(i_offset, size * 12 + i_offset, 12)
         ]
@@ -993,28 +995,34 @@ class DexFile(object):
             cdef = DexClassDef(
                 class_type=self.type_ids[self._parse_uint(data[i : i + 4])],
                 access_flags=AccessFlag(self._parse_uint(data[i + 4 : i + 8]), "class"),
-                superclass=self.type_ids[self._parse_uint(data[i + 8 : i + 12])]
-                if self._parse_uint(data[i + 8 : i + 12]) != NO_INDEX
-                else None,
-                interfaces=self.type_lists[
-                    cast(FileOffset, self._parse_uint(data[i + 12 : i + 16]))
-                ]
-                if self._parse_uint(data[i + 12 : i + 16]) != 0
-                else None,
-                source_file=self.strings[self._parse_uint(data[i + 16 : i + 20])]
-                if self._parse_uint(data[i + 16 : i + 20]) != NO_INDEX
-                else None,
+                superclass=(
+                    self.type_ids[self._parse_uint(data[i + 8 : i + 12])]
+                    if self._parse_uint(data[i + 8 : i + 12]) != NO_INDEX
+                    else None
+                ),
+                interfaces=(
+                    self.type_lists[
+                        cast(FileOffset, self._parse_uint(data[i + 12 : i + 16]))
+                    ]
+                    if self._parse_uint(data[i + 12 : i + 16]) != 0
+                    else None
+                ),
+                source_file=(
+                    self.strings[self._parse_uint(data[i + 16 : i + 20])]
+                    if self._parse_uint(data[i + 16 : i + 20]) != NO_INDEX
+                    else None
+                ),
                 annotations=cast(FileOffset, self._parse_uint(data[i + 20 : i + 24])),
-                class_data=self.class_data_items[
-                    self._parse_uint(data[i + 24 : i + 28])
-                ]
-                if self._parse_uint(data[i + 24 : i + 28]) != 0
-                else None,
-                static_values=self.encoded_arrays[
-                    self._parse_uint(data[i + 28 : i + 32])
-                ]
-                if self._parse_uint(data[i + 28 : i + 32])
-                else list(),
+                class_data=(
+                    self.class_data_items[self._parse_uint(data[i + 24 : i + 28])]
+                    if self._parse_uint(data[i + 24 : i + 28]) != 0
+                    else None
+                ),
+                static_values=(
+                    self.encoded_arrays[self._parse_uint(data[i + 28 : i + 32])]
+                    if self._parse_uint(data[i + 28 : i + 32])
+                    else list()
+                ),
             )
             # Right now static_values is truncated like it is in the dex file.
             # It could pad out the array like the spec says, but I think that
@@ -1044,9 +1052,9 @@ class DexFile(object):
             self.method_handles.append(
                 DexMethodHandle(
                     type_=method_handle_type,
-                    field_or_method_id=self.method_ids[id_]
-                    if id_ <= 0x3
-                    else self.field_ids[id_],
+                    field_or_method_id=(
+                        self.method_ids[id_] if id_ <= 0x3 else self.field_ids[id_]
+                    ),
                 )
             )
 

@@ -4,17 +4,7 @@ import re
 import unittest
 from pathlib import Path
 from struct import unpack
-from typing import (
-    NewType,
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    Match,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import NewType, TYPE_CHECKING, Any, Dict, List, Match, Tuple, Union, cast
 
 try:
     from compat import (  # type: ignore
@@ -333,7 +323,8 @@ class TestFormattingArgsWithSyntax(unittest.TestCase):
 
     def test_large_replacement(self) -> None:
         self.assertEqual(
-            format_args_with_syntax({"A": 0x999}, "the number is AAAA"), "the number is 999"
+            format_args_with_syntax({"A": 0x999}, "the number is AAAA"),
+            "the number is 999",
         )
 
     def test_multiple_replacements(self) -> None:
@@ -583,8 +574,8 @@ def disassemble(
         return (
             [
                 InstructionTextToken(
-                    token_type=InstructionTextTokenType.InstructionToken, text=text,
-                ),
+                    token_type=InstructionTextTokenType.InstructionToken, text=text
+                )
             ],
             df.pseudoinstructions[addr]._total_size,
         )
@@ -673,47 +664,49 @@ def disassemble_pseudoinstructions(
             if data[code_offset] == 1:
                 # packed-switch-payload
                 size = unpack("<H", data_swapped[:2])[0]
-                pseudoinstructions[
-                    cast("FileOffset", addr + code_offset)
-                ] = SmaliPackedSwitchPayload(
-                    _total_size=size * 4 + 8,
-                    size=size,
-                    first_key=unpack("<i", data_swapped[2:6])[0],
-                    targets=[
-                        unpack("<i", data_swapped[i : i + 4])[0]
-                        for i in range(6, 6 + size * 4, 4)
-                    ],
+                pseudoinstructions[cast("FileOffset", addr + code_offset)] = (
+                    SmaliPackedSwitchPayload(
+                        _total_size=size * 4 + 8,
+                        size=size,
+                        first_key=unpack("<i", data_swapped[2:6])[0],
+                        targets=[
+                            unpack("<i", data_swapped[i : i + 4])[0]
+                            for i in range(6, 6 + size * 4, 4)
+                        ],
+                    )
                 )
                 code_offset += size * 4 + 8
             elif data[code_offset] == 2:
                 # sparse-switch-payload
                 size = unpack("<H", data_swapped[:2])[0]
-                pseudoinstructions[
-                    cast("FileOffset", addr + code_offset)
-                ] = SmaliSparseSwitchPayload(
-                    _total_size=size * 8 + 4,
-                    size=size,
-                    keys=[
-                        unpack("<i", data_swapped[i : i + 4])[0]
-                        for i in range(2, 2 + size * 4, 4)
-                    ],
-                    targets=[
-                        unpack("<i", data_swapped[i : i + 4])[0]
-                        for i in range(2 + size * 4, 2 + size * 8, 4)
-                    ],
+                pseudoinstructions[cast("FileOffset", addr + code_offset)] = (
+                    SmaliSparseSwitchPayload(
+                        _total_size=size * 8 + 4,
+                        size=size,
+                        keys=[
+                            unpack("<i", data_swapped[i : i + 4])[0]
+                            for i in range(2, 2 + size * 4, 4)
+                        ],
+                        targets=[
+                            unpack("<i", data_swapped[i : i + 4])[0]
+                            for i in range(2 + size * 4, 2 + size * 8, 4)
+                        ],
+                    )
                 )
                 code_offset += size * 8 + 4
             elif data[code_offset] == 3:
                 # fill-array-data-payload
                 element_width = unpack("<H", data_swapped[:2])[0]
                 size = unpack("<I", data_swapped[2:6])[0]
-                pseudoinstructions[
-                    cast("FileOffset", addr + code_offset)
-                ] = SmaliFillArrayDataPayload(
-                    _total_size=((size * element_width + 1) // 2) * 2 + 8,
-                    element_width=element_width,
-                    size=size,
-                    data=data_swapped[6 : 8 + ((element_width * size + 1) // 2) * 2],
+                pseudoinstructions[cast("FileOffset", addr + code_offset)] = (
+                    SmaliFillArrayDataPayload(
+                        _total_size=((size * element_width + 1) // 2) * 2 + 8,
+                        element_width=element_width,
+                        size=size,
+                        data=data_swapped[
+                            6 : 8 + ((element_width * size + 1) // 2) * 2
+                        ],
+                    )
                 )
                 code_offset += ((size * element_width + 1) // 2) * 2 + 8
             else:
@@ -723,7 +716,9 @@ def disassemble_pseudoinstructions(
                 code_offset += 2
         else:
             # Normal instruction
-            insn_info = disassemble.insns[data[code_offset + 1]]  # type: ignore[attr-defined]
+            insn_info = disassemble.insns[
+                data[code_offset + 1]
+            ]  # type: ignore[attr-defined]
             code_offset += insn_info.fmt.insn_len * 2
     return pseudoinstructions
 

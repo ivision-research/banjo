@@ -1,4 +1,5 @@
 """BinaryView class for Binary Ninja plugin."""
+
 import base64
 import dataclasses
 import json
