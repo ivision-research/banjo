@@ -402,7 +402,7 @@ def tokenize_syntax(
         # Literal e.g. #+0001
         tokens.append(
             InstructionTextToken(
-                InstructionTextTokenType.IntegerToken, hex(int(word_formatted[2:], 16))
+                type=InstructionTextTokenType.IntegerToken, text=hex(int(word_formatted[2:], 16)), value=int(word_formatted[2:], 16)
             )
         )
     elif "@" in word_formatted:
