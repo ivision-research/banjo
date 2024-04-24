@@ -20,8 +20,12 @@ There are still some rough edges. See [GitHub issues](https://github.com/CarveSy
 
 This project was released at a [ShmooCon 2020 talk](https://github.com/CarveSystems/presentations/tree/master/2020/banjo).
 
+![screenshot](doc/banjo_screenshot.png)
+
 ## Installation Instructions
 
-Make sure Binary Ninja is using Python 3.8.
+Make sure Binary Ninja is using Python 3.8 or higher.
 
-`cd ~/.binaryninja/plugins/ && git clone https://github.com/carvesystems/banjo.git`
+```
+cd ~/.binaryninja/plugins/ && git clone https://github.com/carvesystems/banjo.git
+```
