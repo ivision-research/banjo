@@ -145,31 +145,33 @@ class Smali(Architecture):  # type: ignore
     ) -> int:
         self.load_dex()
         insn_info = self.insns[data[0]]
-        if data[0] == 0x2B or data[0] == 0x2C and False:
-            data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
-            args = parse_with_format(data_to_parse, insn_info.fmt.format_)
-            offset = sign(args["B"], insn_info.fmt.format_.count("B"))
-            branches = list()  # [addr + offset * 2, addr + insn_info.fmt.insn_len * 2]
-            if data[0] == 0x2B:  # packed-switch
-                payload = cast(
-                    SmaliPackedSwitchPayload,
-                    self.df.pseudoinstructions[cast(FileOffset, addr + offset * 2)],
-                )
-                for i in range(len(payload.targets)):
-                    key = payload.first_key + i
-                    target_addr = addr + payload.targets[i] * 2
-                    label = il.get_label_for_address(self, target_addr)
-                    if label is None:
-                        il.add_label_for_address(self, target_addr)
-                        label = il.get_label_for_address(self, target_addr)
-                    branches.append(label)
-            else:  # sparse-switch
-                log_error("NOT IMPLEMENTED YET")
-                # for key, target in zip(payload.keys, payload.targets):
-                #     branches.append(addr + target * 2)
-            # log_warn(f'{branches=}')
-            # reg=il.add(4, il.reg(4, f'v{args["A"]}'), il.const(4, 1))
-            # branches_list = il.add_label_list(branches)
-            # expr=il.expr(LowLevelILOperation.LLIL_JUMP_TO, reg, branches) #, size=insn_info.fmt.insn_len * 2))
-            # il.append(expr)
+        # if data[0] == 0x2B or data[0] == 0x2C and False:
+        #     data_to_parse = endian_swap_shorts(data[: 2 * insn_info.fmt.insn_len])
+        #     args = parse_with_format(data_to_parse, insn_info.fmt.format_)
+        #     offset = sign(args["B"], insn_info.fmt.format_.count("B"))
+        #     branches = list()  # [addr + offset * 2, addr + insn_info.fmt.insn_len * 2]
+        #     if data[0] == 0x2B:  # packed-switch
+        #         payload = cast(
+        #             SmaliPackedSwitchPayload,
+        #             self.df.pseudoinstructions[cast(FileOffset, addr + offset * 2)],
+        #         )
+        #         for i in range(len(payload.targets)):
+        #             key = payload.first_key + i
+        #             target_addr = addr + payload.targets[i] * 2
+        #             label = il.get_label_for_address(self, target_addr)
+        #             if label is None:
+        #                 il.add_label_for_address(self, target_addr)
+        #                 label = il.get_label_for_address(self, target_addr)
+        #             branches.append(label)
+        #     else:  # sparse-switch
+        #         log_error("NOT IMPLEMENTED YET")
+        #         # for key, target in zip(payload.keys, payload.targets):
+        #         #     branches.append(addr + target * 2)
+        #     log_warn(f'{branches=}')
+        #     reg=il.add(4, il.reg(4, f'v{args["A"]}'), il.const(4, 1))
+        #     branches_list = il.add_label_list(branches)
+        #     expr=il.expr(LowLevelILOperation.LLIL_JUMP_TO, reg, branches) #, size=insn_info.fmt.insn_len * 2))
+        #     il.append(expr)
+        expr = il.expr(LowLevelILOperation.LLIL_UNDEF, size=insn_info.fmt.insn_len * 2)
+        il.append(expr)
         return insn_info.fmt.insn_len * 2
