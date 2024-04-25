@@ -50,7 +50,7 @@ except ModuleNotFoundError:
 
     @dataclass
     class InstructionTextToken:  # type: ignore
-        token_type: InstructionTextTokenType
+        type: InstructionTextTokenType
         text: str
         value: int = 0
         size: int = 0

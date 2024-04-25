@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 import argparse
 from pathlib import Path
 from typing import TextIO
@@ -21,6 +21,7 @@ def write_method(df: DexFile, f: TextIO, meth: DexEncodedMethod) -> None:
                 endian_swap_shorts(meth.code.insns[i:]),
                 FileOffset(meth.code._insns_off + i),
             )
+            # FIXME tries aren't written, since they're handled as code offsets in binaryview.py
             f.write(f'\n    {"".join([insn.text for insn in insns])}\n')
             i += size
         except Exception as e:
