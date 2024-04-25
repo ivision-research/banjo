@@ -24,7 +24,7 @@ This project was released at a [ShmooCon 2020 talk](https://github.com/CarveSyst
 
 ## Installation Instructions
 
-Make sure Binary Ninja is using Python 3.8 or higher.
+Make sure Binary Ninja is using Python 3.8 or higher and copy banjo to `BN_USER_DIRECTORY/plugins/`. On Linux:
 
 ```
 cd ~/.binaryninja/plugins/ && git clone https://github.com/carvesystems/banjo.git

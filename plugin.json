@@ -16,6 +16,6 @@
     "installinstructions": {
 		"Linux": "Just copy to plugin directory. Requires python >= 3.8",
 		"Darwin": "Untested on macOS. Just copy to plugin directory. Requires python >= 3.8",
-		"Windows": "Untested on Windows. Just copy to plugin directory. Requires python >= 3.8"
+		"Windows": "Just copy to plugin directory. Requires python >= 3.8. Lightly tested on Windows."
 	}
 }
