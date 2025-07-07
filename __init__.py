@@ -21,12 +21,12 @@ class UINotification(UIContextNotification):
         UIContext.unregisterNotification(self)
 
     def OnBeforeOpenFile(self, context, file):
-        Architecture["Smali"].frame = pathlib.Path(file.getFilename()).name
+        Architecture["Smali"].frame = pathlib.Path(file.getFilename()).resolve().as_posix()
         return True
 
     def OnViewChange(self, context, frame, type):
         if frame:
-            Architecture["Smali"].frame = pathlib.Path(context.getCurrentView().getData().file.filename).name
+            Architecture["Smali"].frame = pathlib.Path(context.getCurrentView().getData().file.filename).resolve().as_posix()
 
 
 notif = UINotification()
