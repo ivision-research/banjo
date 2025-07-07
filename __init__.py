@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import pathlib
 
 from .architecture import Smali
 from .binaryview import Dex
@@ -20,12 +21,12 @@ class UINotification(UIContextNotification):
         UIContext.unregisterNotification(self)
 
     def OnBeforeOpenFile(self, context, file):
-        Architecture["Smali"].frame = file.getFilename().rsplit("/", 1)[-1]
+        Architecture["Smali"].frame = pathlib.Path(file.getFilename()).resolve().as_posix()
         return True
 
     def OnViewChange(self, context, frame, type):
         if frame:
-            Architecture["Smali"].frame = frame.getShortFileName()
+            Architecture["Smali"].frame = pathlib.Path(context.getCurrentView().getData().file.filename).resolve().as_posix()
 
 
 notif = UINotification()

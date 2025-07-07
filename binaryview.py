@@ -3,6 +3,7 @@
 import base64
 import dataclasses
 import json
+import pathlib
 from typing import Any, Set
 
 from binaryninja.binaryview import BinaryView  # type: ignore
@@ -55,7 +56,7 @@ class DexParser(BackgroundTaskThread):  # type: ignore
             df = DexFile(self.bv.raw.read(0, self.bv.raw.end))
             if not hasattr(self.bv.arch, "dfs"):
                 self.bv.arch.dfs = dict()
-            self.bv.arch.dfs[self.bv.file.filename.rsplit("/", 1)[-1]] = df
+            self.bv.arch.dfs[pathlib.Path(self.bv.file.filename).resolve().as_posix()] = df
         except Exception:
             log_error("caught error, writing json anyway")
             raise
